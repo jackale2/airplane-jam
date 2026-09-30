@@ -41,17 +41,26 @@ describe('shuffleBoard', () => {
 });
 
 describe('coins persist and grow', () => {
-  it('each win adds the reward, the first win of the day adds the bonus, and the balance is stored in the save', () => {
-    const save = { data: defaultSave(), save() {} } as unknown as SaveManager;
+  it('a win pays the base, the star bonus and the first-win-of-the-day bonus, and the balance is stored in the save', () => {
+    const save = { data: defaultSave(), save() {}, flush() {} } as unknown as SaveManager;
     const eco = new EconomyManager(save);
-    const first = eco.claimWinReward();
-    expect(first.total).toBe(70);
-    expect(save.data.coins).toBe(70);
-    const second = eco.claimWinReward();
+    const start = save.data.coins;
+    const first = eco.claimWin(1, 3);
+    expect(first.total).toBe(20 + 20 + 50);
+    expect(save.data.coins).toBe(start + 90);
+    const second = eco.claimWin(2, 1);
     expect(second.total).toBe(20);
-    expect(save.data.coins).toBe(90);
-    expect(eco.spend(100)).toBe(false);
+    expect(save.data.coins).toBe(start + 110);
+    expect(eco.spend(10_000)).toBe(false);
     expect(eco.spend(40)).toBe(true);
-    expect(save.data.coins).toBe(50);
+    expect(save.data.coins).toBe(start + 70);
+  });
+
+  it('HARD levels pay double', () => {
+    const save = { data: defaultSave(), save() {}, flush() {} } as unknown as SaveManager;
+    save.data.lastWinBonus = new Date().toISOString(); // not today's key: bonus still available, so claim it first
+    const eco = new EconomyManager(save);
+    eco.claimWin(1, 1);
+    expect(eco.claimWin(20, 3).total).toBe((20 + 20) * 2);
   });
 });

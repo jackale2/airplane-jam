@@ -423,11 +423,11 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 | 0 Setup | Done. Vite + Phaser 3.90 + TypeScript strict, Vitest, asset manifest in `src/data/assets.ts`, audio pack cloned. |
 | 1 Core mechanic | Done. All rules live in `src/core` (no Phaser). Planes are the owner-supplied PNG art (see decision 11). |
 | 2 Levels | Done. Generator, solver and `npm run gen:levels`; 100 levels in `src/data/levels.json`. The 200-level test passes. |
-| 3 UI and feel | Done in code: menu, HUD, pause/win/fail popups, shop, settings, tutorial on levels 1 to 3, colorblind symbols, sounds. Not yet play-tested by a person on a phone. |
-| 4 Boosters, economy, saving | Done. Three boosters (coins or rewarded ad), coins, daily bonus, versioned save that survives a missing or corrupt file. |
+| 3 UI and feel | Done, then rebuilt for v1.0 (decisions 13 to 19): home hub with tab bar, world map, shop, trophies, settings, tutorial coach, ASMR audio, responsive layouts. Tested in phone, tablet and desktop browsers; not yet on a physical phone. |
+| 4 Boosters, economy, saving | Done. Boosters unlock at levels 4, 7 and 10 and cost coins; save format v2 (stars, missions, achievements, cosmetics, stats) migrates v1 saves. |
 | 5 Android build | Partly done. Capacitor config and the Android project exist, and the app is locked to portrait. **No APK yet:** this machine has no JDK or Android SDK. Install Android Studio, then run `npm run cap:sync` and `npm run cap:open`. |
-| 6 Monetization | Not started, by design. `AdsManager` and `IapManager` are safe stubs with the final rules (interstitial cooldowns are unit tested). Needs the owner's AdMob app and ad unit IDs, Play Console products, and approval of the plugins (see below). |
-| 7 Polish and release | Owner work: Play account, icon, screenshots, privacy policy, device testing. |
+| 6 Monetization | Off for launch, by owner decision (no ads, no purchases). `AdsManager` and `IapManager` stay as stubs behind `TUNING.adsEnabled` and `TUNING.purchasesEnabled`. |
+| 7 Polish and release | Store text, privacy policy page, screenshots and feature graphic, and a signed release workflow are in the repo. Owner work: app id, Play and App Store accounts, keystore, hosting the policy, device testing. |
 
 **Decisions and deviations**
 
@@ -442,7 +442,15 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 9. **Tooling.** Node 24 runs the TypeScript scripts directly, so the code uses erasable syntax only (no enums or constructor parameter properties). `@types/node` was added as a dev dependency for the scripts.
 11. **Visual style (Sep 30, 2026).** The UI follows the owner's mockup: dark blue HUD bar with pills, yellow/green/blue 3D booster buttons, dark apron with runway lights and a dashed orange grid, an airport skyline background, and white airliners with colored wings, nose and tail (`npm run gen:planes`, SVG). Each plane has a see-through arrow in its color ahead of the nose and small chevrons behind. Passengers are small colored bean figures drawn in code. Font is Fredoka (SIL OFL). Only the 8 colorblind symbols from the owner-supplied art pack are still used; the rest of that pack is not in the game.
 12. **Board and UI fixes after playtesting level 5 and 30.** Planes are scaled from the cell size with a gap to their neighbours; the whole fuselage is the plane color; a white arrow sits in the nose cell and a color symbol in the tail cell (symbols are on by default, setting `settings.symbols` replaced `settings.colorblind`). Taps snap to the nearest plane when cells are under 44 px on screen. The layout is computed from the screen shape (design height 1920 to 2400), the board fills the apron region, six gate slots are always drawn (unlocked ones bright, the rest with a padlock), boosters explain themselves on first use (`tipsSeen` in the save), and Shuffle only applies a layout the solver can still win. Dev checks: `npm run check:levels [first last]`, plus a console report on every level load in `npm run dev`. `?coins=N` sets the balance in dev only.
-10. **Browser and dev behavior.** Rewarded ads always succeed after 0.4 seconds and interstitials do nothing. In `npm run dev`, purchases are simulated. A production web build grants no purchases.
+10. **Browser and dev behavior.** Ads and purchases are switched off (decision 19). In `npm run dev`, `?fresh`, `?level=N` and `?coins=N` set up a save for testing; `window.__game`, `window.__services` and `window.__aj` are dev-only handles.
+13. **v1.0 look (Sep 30, 2026).** Researched what works in the jam niche (`docs/ART_DIRECTION.md`) and moved to a bright toy-like 2.5D style: glossy generated planes in 5 liveries, 8 chibi traveler characters in 8 colors with outfit overlays (`npm run gen:art`), a canvas-drawn UI kit, destination scenery, a terminal band behind the gates, seat dots that fill with color, soft shadows. Replaces decision 11's look.
+14. **Feel.** Taps no longer wait for animations: planes taxi concurrently and curve into their gates, while boarding plays in queue order through one pipeline (a plane waits outside the apron if its gate is still being vacated). Chains of 8, 14 and 20 passengers get praise.
+15. **Audio.** All sounds and music are synthesized at runtime; the Kenney audio files are gone. Boarding pops climb a pentatonic scale in the key of the destination's generative music. A file at `public/assets/audio/music/music.ogg` still replaces the music.
+16. **Meta.** Stars: 3 for a win without boosters, 2 with one booster, 1 otherwise or after a continue. Every 10th level from 20 is HARD and pays double. Ten destinations of 20 levels loop forever (tour 2, 3, ...). Daily gifts never reset on a missed day. Three daily missions and a bonus chest; ten achievements with six tiers each. Zen mode unlocks after level 6 and never fails (it opens gates up to 7, then brings a matching traveler forward).
+17. **Every screen.** The design space keeps the short side at 1080 px and follows the window shape: tall (phones), compact (tablet portrait, boosters beside the board) and wide (landscape and square screens, queue and gates on the left). The board turns a quarter when that gives bigger cells. Tablets and desktops render up to 2x for sharp text. Resizing re-lays the scene out and keeps the game state. iPhones and Android phones stay in portrait; iPads, Android tablets and Chromebooks rotate.
+18. **Boosters.** Unlock at levels 4, 7 and 10 with 2 free each; afterwards they cost 100, 100 and 150 coins. A deadlock offers Retry or one more gate (a Gate booster, or 120 coins, doubling per continue).
+19. **Monetization at launch.** None: no ads, no purchases, no consent form. Coins come from wins, stars, the first win of the day, destinations, daily gifts, missions, achievements and Zen boards, and buy boosters and cosmetics.
+20. **Phones in practice.** The queue walkway (carpet, stanchions, belts) is baked into one texture, particle emitters are pooled, looping tweens end with their objects, and cached scenery is capped at about three screens of texture memory. Queue shapes stretch to fill the panel and travelers are sized so none stand on top of another (unit tested on six screen sizes). The Android back button closes a dialog, pauses a level or goes back to the home screen, where it leaves the app. Icon colors are painted into their textures, so the canvas fallback renderer shows them too.
 
 **Owner answers (Sep 30, 2026)**
 
@@ -450,10 +458,12 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 - Levels: keep placing what fits. Revisit the tap-target size after phone testing.
 - Launch monetization: ads only first. Coin packs and Remove Ads stay in the code but ship in a later update.
 - Android: no Android Studio, phone or AdMob account yet, so Milestones 5 to 7 wait.
+- v1.0 direction (Sep 30, 2026): pick the look from research on what works in the niche; passengers are cute travelers; add all four features (world map with stars, daily rewards and missions, Zen mode, cosmetics); no ads at launch; make it work on every device and screen.
 
 **Owner tasks and open decisions**
 
-- Final game name, app id and app icon (`capacitor.config.ts` has placeholders).
-- Approve the AdMob plugin for Milestone 6, and supply the AdMob IDs.
-- Publish a privacy policy and replace the placeholder URL in `SettingsScene.ts`.
-- Install Android Studio and a test phone for Milestone 5 and the 60 fps check.
+- Final game name and app id (`capacitor.config.ts` still has `com.example.airplanejam`, which Google Play rejects).
+- Host `docs/privacy-policy.html` with a real support email and put its URL in `src/ui/dialogs.ts` and the store listings.
+- Create the upload keystore and add the signing secrets (see `README.md`).
+- Test on real phones (60 fps, haptics, safe areas), then Play internal testing.
+- Later: approve the AdMob and purchase plugins if ads or purchases come in an update.

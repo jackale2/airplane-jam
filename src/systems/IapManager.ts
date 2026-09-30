@@ -15,8 +15,14 @@ export class IapManager {
     this.economy = economy;
   }
 
+  /** Purchases are off in the launch build (TUNING.purchasesEnabled); the shop sells cosmetics for coins instead. */
+  get enabled() {
+    return TUNING.purchasesEnabled;
+  }
+
   /** True if the purchase completed and was granted. */
   async buy(productId: string): Promise<boolean> {
+    if (!this.enabled) return false;
     if (Capacitor.isNativePlatform()) return false; // ponytail: wire the IAP plugin at Milestone 6
     if (!import.meta.env.DEV) return false;
     return this.grant(productId);

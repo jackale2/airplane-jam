@@ -119,4 +119,28 @@ export class Game {
   relayout(planes: PlaneData[]) {
     this.board = new Board(this.level.cols, this.level.rows, planes);
   }
+
+  /** Board whoever can board now (after a booster or an assist changed the gates or the line). */
+  resume(): GameEvent[] {
+    if (this.status === 'won') return [];
+    this.status = 'playing';
+    const ev: GameEvent[] = [];
+    this.settle(ev);
+    this.finish(ev);
+    return ev;
+  }
+
+  /** Zen helper: move the first passenger a parked plane can take to the front of the line. */
+  assistQueue(): boolean {
+    const want = new Set(
+      this.gate.filter((p): p is number => p !== null && this.filled.get(p)! < Game.capacity(this.planeInfo(p))).map((p) => this.planeInfo(p).color),
+    );
+    const i = this.queue.findIndex((c, k) => k >= this.queueIdx && want.has(c));
+    if (i <= this.queueIdx) return false;
+    const q = [...this.queue];
+    const [c] = q.splice(i, 1);
+    q.splice(this.queueIdx, 0, c!);
+    this.queue = q;
+    return true;
+  }
 }

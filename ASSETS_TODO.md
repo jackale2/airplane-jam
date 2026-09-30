@@ -1,8 +1,10 @@
-# Assets still to do
+# Assets and owner tasks before release
 
-- Music: none supplied. Drop a file at `public/assets/audio/music/music.ogg` and it plays automatically (looped, respects the Music setting).
-- Win and fail sounds: the Kenney UI audio pack only has clicks and switches, so win, fail, bump, taxi, takeoff, the boarding pop and the takeoff chime are synthesized in `AudioManager`. Replace with CC0 files in `public/assets/audio/sfx/` for something richer.
-- Store graphics: 1024 x 500 feature graphic and screenshots for Google Play (the 512 x 512 icon is `logos/export/icon-512.png`).
-- Final game name and app id: `capacitor.config.ts` still has the working title and a placeholder id (`com.example.airplanejam`).
-- Privacy policy URL: `SettingsScene.ts` uses a placeholder link.
-- Release signing: the workflow builds a debug APK. A signed release bundle needs your own keystore.
+Only the owner can do these. Everything else for v1.0 is in the repo.
+
+- **Final name and app id.** `capacitor.config.ts` still has `com.example.airplanejam`. Google Play rejects `com.example` ids, and the id can never change after the first upload. Pick one (for example `com.yourstudio.airplanejam`), then run `npx cap sync`.
+- **Privacy policy URL.** Host `docs/privacy-policy.html` (GitHub Pages works), put your support email in it, and paste the URL into `PRIVACY_URL` in `src/ui/dialogs.ts` and into both store listings.
+- **Release signing.** Create an upload keystore and add the four GitHub secrets listed in `README.md` so the release workflow builds a signed `.aab`. Back the keystore up.
+- **Store pages.** Text is drafted in `docs/STORE_LISTING.md`. Screenshots and the 1024 x 500 feature graphic are in `store/` (regenerate with `npm run store:shots`).
+- **Optional music file.** The game makes its own calm music. To use a recorded track instead, add `public/assets/audio/music/music.ogg`; it is picked up automatically.
+- **Later updates.** Ads (AdMob) and purchases (coin packs, Remove Ads) are coded but switched off (`TUNING.adsEnabled`, `TUNING.purchasesEnabled`). Turning them on needs an AdMob account, the consent form, store products, and an updated privacy policy and data safety form.

@@ -1,11 +1,15 @@
 {
   "name": "Airplane Jam",
   "short_name": "Airplane Jam",
+  "description": "A calm, satisfying puzzle: tap planes out of the jam and board every traveler.",
   "start_url": "./",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#8fd4f7",
-  "theme_color": "#3fa9f0",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#6ec8f5",
+  "theme_color": "#6ec8f5",
+  "categories": ["games", "entertainment"],
   "icons": [
     {
       "src": "pwa-192x192.png",

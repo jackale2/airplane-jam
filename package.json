@@ -1,17 +1,21 @@
 {
   "name": "airplane-jam",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "test": "vitest run",
+    "test:fast": "vitest run -t \"^(?!.*200 solvable).*$\"",
     "gen:levels": "node scripts/generate-levels.ts",
-    "cap:sync": "npm run build && cap sync android",
+    "gen:art": "node scripts/generate-art.ts",
+    "check:levels": "node scripts/check-levels.ts",
+    "store:shots": "node scripts/store-shots.mjs",
+    "cap:sync": "npm run build && cap sync",
     "cap:open": "cap open android",
-    "gen:planes": "node scripts/generate-planes.ts",
-    "check:levels": "node scripts/check-levels.ts"
+    "cap:open:ios": "cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
