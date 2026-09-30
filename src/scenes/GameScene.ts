@@ -371,7 +371,7 @@ export class GameScene extends Phaser.Scene {
         }
         // fill count shown as if this passenger is now aboard
         this.gateText[e.gate]?.setText(`${e.seat + 1}/${cap}`);
-        a.tick((e.seat + 1) / cap);
+        a.board((e.seat + 1) / cap);
         this.syncQueueAfter(e.queueIndex + 1);
         break;
       }

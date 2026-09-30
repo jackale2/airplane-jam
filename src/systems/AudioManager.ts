@@ -2,7 +2,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import type Phaser from 'phaser';
 import type { SaveData } from './SaveManager.ts';
 
-export type Sfx = 'click' | 'popup' | 'coin' | 'tick' | 'bump' | 'taxi' | 'takeoff' | 'win' | 'fail';
+export type Sfx = 'click' | 'popup' | 'coin' | 'tick' | 'pop' | 'bump' | 'taxi' | 'takeoff' | 'win' | 'fail';
 const FILE_SFX = new Set<Sfx>(['click', 'popup', 'coin', 'tick']);
 
 /**
@@ -43,15 +43,16 @@ export class AudioManager {
     try {
       if (FILE_SFX.has(name)) {
         if (this.game.cache.audio.exists(name)) this.game.sound.play(name, { volume: this.sfxVolume, rate: opts.rate ?? 1 });
-      } else this.synth(name);
+      } else this.synth(name, opts.rate ?? 1);
     } catch {
       /* audio is best-effort */
     }
   }
 
-  /** Boarding tick: pitch rises as the plane fills (fill is 0..1). */
-  tick(fill: number) {
-    this.play('tick', { rate: 0.8 + fill * 0.9 });
+  /** Boarding: a bubble pop plus a haptic tick. Pitch rises as the plane fills (fill is 0..1). */
+  board(fill: number) {
+    this.play('pop', { rate: 0.8 + fill * 0.9 });
+    this.haptic('light');
   }
 
   haptic(style: 'light' | 'medium' = 'light') {
@@ -68,7 +69,7 @@ export class AudioManager {
     return this.noise;
   }
 
-  private synth(name: Sfx) {
+  private synth(name: Sfx, rate: number) {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     const t = ctx.currentTime;
@@ -103,6 +104,10 @@ export class AudioManager {
     };
 
     switch (name) {
+      case 'pop': // bubble pop: a very short upward sine chirp
+        env(0.09, 0.7);
+        tone('sine', 380 * rate, 900 * rate, 0, 0.07);
+        break;
       case 'bump':
         env(0.18, 0.9);
         tone('sine', 140, 50, 0, 0.18);
