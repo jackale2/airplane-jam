@@ -411,3 +411,41 @@ The game is ready to ship when every box below is ticked.
 - [ ] Target API level meets the current Play requirement.
 - [ ] Internal and closed testing done. Check the current Play Console rules for new developer accounts before requesting production access.
 - [ ] `CREDITS.md` lists all third-party assets, including the Kenney packs.
+
+## Build status and decisions log
+
+Updated Sep 30, 2026. This section records what was built, where the build differs from the plan above, and what only the owner can do.
+
+**Milestone status**
+
+| Milestone | Status |
+| --- | --- |
+| 0 Setup | Done. Vite + Phaser 3.90 + TypeScript strict, Vitest, asset manifest in `src/data/assets.ts`, audio pack cloned. |
+| 1 Core mechanic | Done. All rules live in `src/core` (no Phaser). Plane SVGs come from `npm run gen:planes`. |
+| 2 Levels | Done. Generator, solver and `npm run gen:levels`; 100 levels in `src/data/levels.json`. The 200-level test passes. |
+| 3 UI and feel | Done in code: menu, HUD, pause/win/fail popups, shop, settings, tutorial on levels 1 to 3, colorblind symbols, sounds. Not yet play-tested by a person on a phone. |
+| 4 Boosters, economy, saving | Done. Three boosters (coins or rewarded ad), coins, daily bonus, versioned save that survives a missing or corrupt file. |
+| 5 Android build | Partly done. Capacitor config and the Android project exist, and the app is locked to portrait. **No APK yet:** this machine has no JDK or Android SDK. Install Android Studio, then run `npm run cap:sync` and `npm run cap:open`. |
+| 6 Monetization | Not started, by design. `AdsManager` and `IapManager` are safe stubs with the final rules (interstitial cooldowns are unit tested). Needs the owner's AdMob app and ad unit IDs, Play Console products, and approval of the plugins (see below). |
+| 7 Polish and release | Owner work: Play account, icon, screenshots, privacy policy, device testing. |
+
+**Decisions and deviations**
+
+1. **Assets.** The project shipped two Kenney packs (Puzzle Pack II, Tappy Plane), not the `public/assets/ui` folder the plan described. Kept: the two fonts, yellow buttons, panel, pointing hand, smoke puff, coin, a tintable passenger ball, one sparkle, and 8 Puzzle Pack tile shapes as the colorblind symbols. Deleted: side-view biplanes, letter and number PNGs, ground and rock art, pipes, paddles, back tiles, unused particles, spritesheets, vectors, SWF files and shortcut files. The original packs are in git history (first commit).
+2. **Audio.** The cloned Kenney UI audio pack only has clicks, switches and rollovers. Click, popup, coin and boarding tick use it. Win and fail are synthesized with WebAudio, like bump, taxi and takeoff. No music file was supplied, so none plays.
+3. **The difficulty table cannot be met exactly.** The apron grids are too small for the plane counts (for example 50 planes of 2 to 4 cells need at least 100 cells, and the 8 x 12 grid has 96). Plane counts are now targets: the generator places planes until one no longer fits, and a plane may come out shorter than requested. Shipped levels hold 5 to 8, 8 to 16, 15 to 25 and 20 to 31 planes in the four bands. Colors and grid sizes follow the table.
+4. **Gate slots and queue mix.** Five gates with eight interleaved colors is usually unwinnable. The generator therefore relaxes the queue mix (longer color runs) until the solver can win, and if that fails after 25 layouts it allows one more gate slot (up to three). All shipped levels keep the table's gate count. `parMinSlots` records the real minimum.
+5. **Solver.** It runs the real `Game.tap` rules. It only tries taps that help the queue head (a head-color plane, or a plane blocking one), because parking anything else only wastes a slot. Node cap 200,000.
+6. **Which plane boards.** If two parked planes match the head passenger, the leftmost gate boards first.
+7. **Endless levels.** Levels above 100 are generated from the level number inside a web worker, because a hard level can take several seconds.
+8. **Cell size.** The cell size is computed per level so each grid fills the apron, capped at 150 px, instead of one size for the largest grid. On the 9 x 14 grid a cell is about 68 design px, roughly 22 dp on a 360 dp phone. That is below the 48 dp tap target, and planes touch each other, so the hit area cannot grow. See the open question about grid size for levels 101 and up.
+9. **Tooling.** Node 24 runs the TypeScript scripts directly, so the code uses erasable syntax only (no enums or constructor parameter properties). `@types/node` was added as a dev dependency for the scripts.
+10. **Browser and dev behavior.** Rewarded ads always succeed after 0.4 seconds and interstitials do nothing. In `npm run dev`, purchases are simulated. A production web build grants no purchases.
+
+**Owner tasks and open decisions**
+
+- Final game name, app id and app icon (`capacitor.config.ts` has placeholders).
+- Ads only, or ads plus purchases at launch.
+- Approve the AdMob and purchase plugins for Milestone 6, and supply the AdMob IDs.
+- Publish a privacy policy and replace the placeholder URL in `SettingsScene.ts`.
+- Install Android Studio and a test phone for Milestone 5 and the 60 fps check.
