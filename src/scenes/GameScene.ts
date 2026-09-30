@@ -161,19 +161,13 @@ export class GameScene extends Phaser.Scene {
   private makePlane(p: PlaneData): View {
     this.cur.set(p.id, p);
     const c = this.add.container(0, 0).setDepth(10);
-    const w = this.cell * 0.9;
     const h = this.cell * p.length * 0.95;
-    // a solid color slab under the art makes the color obvious even though the fuselage is slim
-    const slab = this.add.graphics();
-    slab.fillStyle(COLOR_HEX[p.color], 0.95).fillRoundedRect(-w / 2, -h / 2, w, h, w * 0.35);
-    slab.lineStyle(Math.max(3, this.cell * 0.05), OUTLINE_HEX, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, w * 0.35);
-    c.add(slab);
     c.add(this.add.image(0, 0, planeKey(p.length, p.color)).setDisplaySize(this.cell, this.cell * p.length));
     // big white arrow down the middle of the plane, pointing the way it will taxi
-    const len = Math.min(h * 0.72, this.cell * 1.7);
-    const head = Math.min(len * 0.5, this.cell * 0.5);
-    const hw = this.cell * 0.3; // arrow head half width
-    const sw = this.cell * 0.11; // shaft half width
+    const len = Math.min(h * 0.55, this.cell * 1.3);
+    const head = Math.min(len * 0.5, this.cell * 0.42);
+    const hw = this.cell * 0.26; // arrow head half width
+    const sw = this.cell * 0.07; // shaft half width
     const y0 = -len / 2;
     const arrow = this.add.graphics();
     arrow.fillStyle(0xffffff, 1).lineStyle(Math.max(3, this.cell * 0.045), OUTLINE_HEX, 1);
