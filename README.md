@@ -21,7 +21,7 @@ Design notes: `docs/ART_DIRECTION.md` (genre research and look), `Airplane Jam G
 
 ```
 npm install
-npm run dev          # http://localhost:5173  (dev flags: ?fresh  ?level=40  ?coins=5000)
+npm run dev          # http://localhost:5173  (dev flags: ?fresh  ?level=40  ?coins=5000  ?renderer=canvas)
 npm run test:fast    # unit tests without the slow 200-level generator test
 npm test             # everything (the 200-level test takes a few minutes)
 npm run build        # production web build in dist/ (installable PWA, works offline)

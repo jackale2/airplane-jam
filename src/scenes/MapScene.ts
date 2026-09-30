@@ -4,7 +4,7 @@ import { DESTINATIONS, destinationIndex, LEVELS_PER_DESTINATION } from '../meta/
 import { isHardLevel } from '../meta/progress.ts';
 import { services } from '../systems/services.ts';
 import { forever } from '../ui/fx.ts';
-import { canvasTex, css, lighten } from '../ui/gfx.ts';
+import { canvasTex, css, lighten, mix } from '../ui/gfx.ts';
 import { icon } from '../ui/icons.ts';
 import { NavBar, NAV_H, TOP_H, topBar } from '../ui/menu.ts';
 import { ribbonTex } from '../ui/Popup.ts';
@@ -104,18 +104,27 @@ export class MapScene extends BaseScene {
     this.sv.content.add(c);
     const w = view.w;
 
-    // sky of this leg of the trip, then the city at its start (bottom)
+    // sky of this leg of the trip, then the city at its start (bottom); the sky ends in the city's own top color
     const skyKey = canvasTex(this, `mapsky_${k % DESTINATIONS.length}_${this.theme}`, 8, 256, (ctx) => {
       const g = ctx.createLinearGradient(0, 0, 0, 256);
       g.addColorStop(0, css(lighten(palette((k + 1) % DESTINATIONS.length, this.theme).skyBot, 0.1)));
-      g.addColorStop(0.55, css(pal.skyTop));
-      g.addColorStop(1, css(pal.skyBot));
+      g.addColorStop(0.6, css(mix(pal.skyTop, pal.skyBot, 0.5)));
+      g.addColorStop(1, css(pal.skyTop));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, 8, 256);
     });
     c.add(this.add.image(0, 0, skyKey).setOrigin(0, 0).setDisplaySize(w, SECTION_H - CITY_H + 4));
     const city = sceneryTex(this, { dest: k % DESTINATIONS.length, theme: this.theme, w, h: CITY_H, horizon: CITY_H * 0.72, layout: 'hero' });
     c.add(this.add.image(0, SECTION_H - CITY_H, city).setOrigin(0, 0).setScale(1 / view.res));
+    // soften the top edge of the city art (the sun's glow would end in a hard line)
+    const edge = canvasTex(this, `mapedge_${k % DESTINATIONS.length}_${this.theme}`, 8, 64, (ctx) => {
+      const g = ctx.createLinearGradient(0, 0, 0, 64);
+      g.addColorStop(0, css(pal.skyTop, 1));
+      g.addColorStop(1, css(pal.skyTop, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 8, 64);
+    });
+    c.add(this.add.image(0, SECTION_H - CITY_H - 2, edge).setOrigin(0, 0).setDisplaySize(w, 80));
     // clouds drifting across this leg
     for (let i = 0; i < 5; i++) {
       const cloud = this.add.image(((i * 0.37 + k * 0.21) % 1) * w, 240 + i * ((SECTION_H - CITY_H - 400) / 5), 'fx_puff').setTint(0xffffff).setAlpha(0.7).setDisplaySize(260, 110);

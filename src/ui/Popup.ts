@@ -97,6 +97,7 @@ export class Popup extends Phaser.GameObjects.Container {
   readonly ph: number;
   private readonly dim: Phaser.GameObjects.Rectangle;
   private keyHandlers: [string, () => void][] = [];
+  private readonly onCloseFn?: () => void;
 
   constructor(scene: Phaser.Scene, opts: PopupOpts) {
     super(scene, view.w / 2, view.h / 2);
@@ -120,6 +121,7 @@ export class Popup extends Phaser.GameObjects.Container {
     if (title.width > rw - 140) title.setScale((rw - 140) / title.width);
     this.add([card, ribbon, title]);
 
+    this.onCloseFn = opts.onClose;
     if (opts.onClose) {
       const x = new Button(scene, w / 2 - 30, top + 30, 92, 92, { icon: 'close', color: 'red', onClick: () => this.close(opts.onClose) });
       this.add(x);
@@ -186,6 +188,12 @@ export class Popup extends Phaser.GameObjects.Container {
 
   get isClosed() {
     return this.closed;
+  }
+
+  /** Hardware back button: closes a popup that has a close button; otherwise it is swallowed. */
+  back() {
+    if (this.onCloseFn) this.close(this.onCloseFn);
+    return true;
   }
 
   close(after?: () => void) {

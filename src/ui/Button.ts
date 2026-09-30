@@ -117,8 +117,7 @@ export class Button extends Phaser.GameObjects.Container {
     let ic: Phaser.GameObjects.Image | undefined;
     if (opts.icon) {
       const s = opts.iconSize ?? Math.round(h * (opts.text ? 0.46 : 0.56));
-      ic = icon(this.scene, 0, 0, opts.icon, s, c.text === '#FFFFFF' ? 0xffffff : 0x5a3a00);
-      if (opts.color === 'white') ic.setTint(0x243056);
+      ic = icon(this.scene, 0, 0, opts.icon, s, opts.color === 'white' ? 0x243056 : c.text === '#FFFFFF' ? 0xffffff : 0x5a3a00);
       parts.push(ic);
     }
     if (opts.text) {
@@ -155,6 +154,7 @@ export class Button extends Phaser.GameObjects.Container {
   setEnabled(on: boolean) {
     this.enabled = on;
     this.bg.setTint(on ? 0xffffff : 0xb8bfcc);
+    if (this.scene.game.renderer.type === Phaser.CANVAS) this.bg.setAlpha(on ? 1 : 0.6); // no tinting on canvas
     this.content.setAlpha(on ? 1 : 0.7);
     return this;
   }

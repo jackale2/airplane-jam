@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { shouldShowInterstitial } from '../systems/AdsManager.ts';
 import { defaultSave, parseSave } from '../systems/SaveManager.ts';
-import { queuePoints } from '../ui/queueShapes.ts';
+import { layoutQueue, queuePoints } from '../ui/queueShapes.ts';
+import { gameLayout, viewFor } from '../layout/view.ts';
 
 describe('SaveManager.parseSave', () => {
   it('starts fresh when the save is missing or corrupt', () => {
@@ -83,6 +84,27 @@ describe('queue shapes', () => {
         expect(p.y).toBeLessThanOrEqual(box.y + box.h + 1);
       }
       expect(pts[0]!.y).toBeGreaterThan(box.y + box.h * 0.6); // head sits low, next to the gate row
+    }
+  });
+
+  it('sizes travelers to the panel without stacking them on each other', () => {
+    for (const [cw, ch] of [[360, 640], [390, 844], [768, 1024], [820, 1180], [1280, 800], [1920, 1080]] as const) {
+      const q = gameLayout(viewFor(cw, ch)).queue;
+      for (const shape of ['loop', 'star', 'heart', 'spiral'] as const) {
+        const { pts, paxH } = layoutQueue(shape, 14, q);
+        expect(paxH).toBeGreaterThan(50);
+        expect(paxH).toBeLessThanOrEqual(150);
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i]!;
+          expect(p.x).toBeGreaterThan(q.x);
+          expect(p.x).toBeLessThan(q.x + q.w);
+          expect(p.y - paxH * 0.95).toBeGreaterThan(q.y); // heads stay inside the panel
+          for (let j = i + 2; j < pts.length; j++) {
+            const stacked = Math.abs(p.x - pts[j]!.x) < paxH * 0.45 && Math.abs(p.y - pts[j]!.y) < paxH * 0.75;
+            expect(stacked, `${shape} ${cw}x${ch} slots ${i},${j}`).toBe(false);
+          }
+        }
+      }
     }
   });
 });

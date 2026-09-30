@@ -1,8 +1,8 @@
 import type Phaser from 'phaser';
-import { canvasTex, rr, type Ctx } from './gfx.ts';
+import { canvasTex, css, rr, type Ctx } from './gfx.ts';
 
 /**
- * Vector icons drawn in a 100 x 100 box. Glyph icons are white (tint them); the COLORED ones keep their colors.
+ * Vector icons drawn in a 100 x 100 box. Glyph icons take the color they are drawn in; the COLORED ones keep theirs.
  */
 const W = '#FFFFFF';
 
@@ -773,22 +773,24 @@ export type IconName = keyof typeof GLYPHS | keyof typeof COLORED;
 export const isColoredIcon = (n: string) => n in COLORED;
 
 /** Texture key for an icon at a design size (cached). */
-export function iconTex(scene: Phaser.Scene, name: IconName, size: number) {
+export function iconTex(scene: Phaser.Scene, name: IconName, size: number, color = 0xffffff) {
   const s = Math.round(size);
-  return canvasTex(scene, `ic_${name}_${s}`, s, s, (ctx) => {
+  // the color is painted in rather than tinted, so icons also look right with the canvas renderer
+  const c = isColoredIcon(name) ? 0xffffff : color;
+  const fill = c === 0xffffff ? W : css(c);
+  return canvasTex(scene, c === 0xffffff ? `ic_${name}_${s}` : `ic_${name}_${s}_${c.toString(16)}`, s, s, (ctx) => {
     ctx.scale(s / 100, s / 100);
-    ctx.fillStyle = W;
-    ctx.strokeStyle = W;
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = fill;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     (GLYPHS[name] ?? COLORED[name])?.(ctx);
   });
 }
 
-/** Icon image: glyphs are tinted to `color`, colored icons keep theirs. */
+/** Icon image: glyphs are drawn in `color`, colored icons keep theirs. */
 export function icon(scene: Phaser.Scene, x: number, y: number, name: IconName, size: number, color = 0xffffff) {
-  const img = scene.add.image(x, y, iconTex(scene, name, size));
+  const img = scene.add.image(x, y, iconTex(scene, name, size, color));
   img.setDisplaySize(size, size);
-  if (!isColoredIcon(name) && color !== 0xffffff) img.setTint(color);
   return img;
 }

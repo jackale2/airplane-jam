@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import { view } from '../config.ts';
+import { planeKey } from '../data/assets.ts';
 import { destinationFor, destinationRange } from '../meta/destinations.ts';
 import { isHardLevel, ZEN_UNLOCK } from '../meta/progress.ts';
 import { services } from '../systems/services.ts';
 import { Button } from '../ui/Button.ts';
 import { openDaily, openSettings } from '../ui/dialogs.ts';
 import { forever } from '../ui/fx.ts';
+import { canvasTex } from '../ui/gfx.ts';
 import { icon } from '../ui/icons.ts';
 import { NavBar, NAV_H, topBar } from '../ui/menu.ts';
 import { Popup } from '../ui/Popup.ts';
@@ -29,6 +31,7 @@ export class HomeScene extends BaseScene {
     const h = view.h;
     const wide = w > h;
     this.scenery(level, 'hero', h * (wide ? 0.7 : 0.66));
+    this.ambient(wide);
     this.moodFor(level);
 
     const bar = topBar(this, { left: { icon: 'gear', onClick: () => openSettings(this, () => this.scene.restart()) } });
@@ -101,6 +104,52 @@ export class HomeScene extends BaseScene {
       this.time.delayedCall(600, () => openDaily(this, bar.coins, () => giftBtn.setBadge(false)));
     }
     this.input.keyboard?.on('keydown-ENTER', () => !this.children.list.some((o) => o instanceof Popup) && this.go('Game', { mode: 'level', level }));
+  }
+
+  /** Back on the home screen closes a popup; otherwise the app goes to the background. */
+  override handleBack() {
+    const p = this.topPopup();
+    return p ? p.back() : false;
+  }
+
+  /** Clouds drifting by and a plane crossing the sky now and then. */
+  private ambient(wide: boolean) {
+    const key = canvasTex(this, 'cloud_soft', 360, 150, (ctx) => {
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.beginPath();
+      ctx.ellipse(180, 100, 160, 42, 0, 0, Math.PI * 2);
+      ctx.ellipse(110, 88, 74, 50, 0, 0, Math.PI * 2);
+      ctx.ellipse(215, 70, 90, 62, 0, 0, Math.PI * 2);
+      ctx.ellipse(160, 58, 58, 46, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    const top = wide ? 0.2 : 0.3;
+    for (let i = 0; i < 3; i++) {
+      const c = this.add.image(Phaser.Math.Between(0, view.w), view.h * (top + i * 0.08), key).setDepth(-5).setAlpha(0.85);
+      c.setScale((0.6 + Math.random() * 0.6) / view.res);
+      const drift = () => {
+        if (!c.active) return;
+        const speed = 18 + i * 6; // px per second
+        this.tweens.add({ targets: c, x: view.w + 260, duration: ((view.w + 260 - c.x) / speed) * 1000, onComplete: () => {
+          c.x = -260;
+          drift();
+        } });
+      };
+      drift();
+    }
+    const livery = services().save.data.cosmetics.livery;
+    const fly = () => {
+      if (!this.sys.isActive()) return;
+      const k = planeKey(livery, 2, Phaser.Math.Between(0, 7));
+      if (this.textures.exists(k)) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const y = view.h * Phaser.Math.FloatBetween(top + 0.02, top + 0.16);
+        const p = this.add.image(dir > 0 ? -120 : view.w + 120, y, k).setDisplaySize(56, 112).setRotation((dir * Math.PI) / 2).setDepth(-4);
+        this.tweens.add({ targets: p, x: dir > 0 ? view.w + 120 : -120, y: y - 70, duration: 8000, ease: 'Sine.InOut', onComplete: () => p.destroy() });
+      }
+      this.time.delayedCall(Phaser.Math.Between(6000, 11000), fly);
+    };
+    this.time.delayedCall(1200, fly);
   }
 
   private openZen() {

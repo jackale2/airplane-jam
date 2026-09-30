@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
+import { view } from '../../config.ts';
 import { outfitKey, travelerKey } from '../../data/assets.ts';
 import { OUTLINE_HEX } from '../../data/colors.ts';
+import { canvasTex, css, rr } from '../../ui/gfx.ts';
 import type { Pal } from '../../ui/scenery.ts';
 
 /** Same as HAT_DY in scripts/art/travelers.ts: how far a hat moves up for tall hair (viewBox units). */
@@ -60,57 +62,104 @@ export function idleBob(scene: Phaser.Scene, pax: Phaser.GameObjects.Container, 
 
 /**
  * Boarding walkway along the queue path: a soft carpet with rope-and-post barriers on both sides,
- * like a real airport line, plus a glowing spot and arrow at the front.
+ * like a real airport line. Baked into one texture (freed with the image) so it costs nothing per frame.
  */
 export function drawWalkway(scene: Phaser.Scene, pts: { x: number; y: number }[], width: number, pal: Pal) {
-  const g = scene.add.graphics().setDepth(3);
-  const path = (w: number, color: number, alpha: number, dy = 0) => {
-    g.lineStyle(w, color, alpha).beginPath().moveTo(pts[0]!.x, pts[0]!.y + dy);
-    for (const p of pts) g.lineTo(p.x, p.y + dy);
-    g.strokePath();
-    for (const p of [pts[0]!, pts[pts.length - 1]!]) g.fillStyle(color, alpha).fillCircle(p.x, p.y + dy, w / 2);
-    for (const p of pts) g.fillStyle(color, alpha).fillCircle(p.x, p.y + dy, w / 2 - 0.5);
-  };
-  path(width + 18, 0x1b2a52, 0.18, 8); // soft shadow
-  path(width + 14, pal.walkwayEdge, 1);
-  path(width, pal.walkway, 1);
-  // dotted center stitching
-  g.fillStyle(pal.walkwayEdge, 0.7);
-  for (let i = 1; i < pts.length; i++) {
-    const a = pts[i - 1]!;
-    const b = pts[i]!;
-    g.fillCircle((a.x + b.x) / 2, (a.y + b.y) / 2, Math.max(2.5, width * 0.035));
-  }
-  // posts and ropes on both edges
-  const posts = scene.add.graphics().setDepth(4);
-  const side = (s: 1 | -1) => {
-    const list: { x: number; y: number }[] = [];
-    for (let i = 0; i < pts.length; i += 2) {
-      const a = pts[Math.max(0, i - 1)]!;
-      const b = pts[Math.min(pts.length - 1, i + 1)]!;
-      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const nx = (-(b.y - a.y) / len) * s;
-      const ny = ((b.x - a.x) / len) * s;
-      list.push({ x: pts[i]!.x + nx * (width / 2 + 10), y: pts[i]!.y + ny * (width / 2 + 10) });
+  const pad = width / 2 + 44;
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  const x0 = Math.floor(Math.min(...xs) - pad);
+  const y0 = Math.floor(Math.min(...ys) - pad - 24);
+  const w = Math.ceil(Math.max(...xs) + pad) - x0;
+  const h = Math.ceil(Math.max(...ys) + pad) - y0;
+  let hash = 0;
+  for (const p of pts) hash = (Math.imul(hash, 31) + Math.round(p.x) * 7 + Math.round(p.y)) | 0;
+  const key = `walk_${hash >>> 0}_${w}x${h}_${pal.walkway.toString(16)}_${Math.round(width)}`;
+  canvasTex(scene, key, w, h, (ctx) => {
+    ctx.translate(-x0, -y0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const stroke = (lw: number, color: string, dy: number) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.moveTo(pts[0]!.x, pts[0]!.y + dy);
+      for (const p of pts) ctx.lineTo(p.x, p.y + dy);
+      ctx.stroke();
+    };
+    stroke(width + 18, 'rgba(27,42,82,0.18)', 8); // soft shadow
+    stroke(width + 14, css(pal.walkwayEdge), 0);
+    stroke(width, css(pal.walkway), 0);
+    // dotted center stitching
+    ctx.fillStyle = css(pal.walkwayEdge, 0.7);
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!;
+      const b = pts[i]!;
+      ctx.beginPath();
+      ctx.arc((a.x + b.x) / 2, (a.y + b.y) / 2, Math.max(2.5, width * 0.035), 0, Math.PI * 2);
+      ctx.fill();
     }
-    posts.lineStyle(Math.max(2.5, width * 0.04), pal.accent, 0.6);
-    const typical = Math.hypot(pts[2]!.x - pts[0]!.x, pts[2]!.y - pts[0]!.y);
-    for (let i = 1; i < list.length; i++) {
-      const a = list[i - 1]!;
-      const b = list[i]!;
-      if (Math.hypot(b.x - a.x, b.y - a.y) > typical * 1.35) continue;
-      const sag = Math.min(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.18);
-      const curve = new Phaser.Curves.QuadraticBezier(new Phaser.Math.Vector2(a.x, a.y - 14), new Phaser.Math.Vector2((a.x + b.x) / 2, (a.y + b.y) / 2 - 14 + sag), new Phaser.Math.Vector2(b.x, b.y - 14));
-      curve.draw(posts, 12);
+    // stanchions and belts on both edges: one post per slot, none standing on the carpet (inside tight bends),
+    // and a belt only where it stays off the carpet
+    const onCarpet = (q: { x: number; y: number }) => {
+      let best = Infinity;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1]!;
+        const b = pts[i]!;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const t = Math.max(0, Math.min(1, ((q.x - a.x) * dx + (q.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+        best = Math.min(best, Math.hypot(q.x - a.x - dx * t, q.y - a.y - dy * t));
+      }
+      return best < width / 2 + 2;
+    };
+    const k = Math.max(0.55, Math.min(1, width / 93)); // stanchion size follows the carpet (smaller queues on flat panels)
+    for (const s of [1, -1]) {
+      const list: ({ x: number; y: number } | null)[] = [];
+      let prev: { x: number; y: number } | undefined;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[Math.max(0, i - 1)]!;
+        const b = pts[Math.min(pts.length - 1, i + 1)]!;
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const nx = (-(b.y - a.y) / len) * s;
+        const ny = ((b.x - a.x) / len) * s;
+        const q = { x: pts[i]!.x + nx * (width / 2 + 10 * k), y: pts[i]!.y + ny * (width / 2 + 10 * k) };
+        const skip = onCarpet(q) || (prev !== undefined && Math.hypot(q.x - prev.x, q.y - prev.y) < 26 * k);
+        list.push(skip ? null : q);
+        if (!skip) prev = q;
+      }
+      ctx.strokeStyle = css(pal.accent, 0.6);
+      ctx.lineWidth = Math.max(2.5, width * 0.04);
+      for (let i = 1; i < list.length; i++) {
+        const a = list[i - 1];
+        const b = list[i];
+        if (!a || !b || onCarpet({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })) continue;
+        const d = Math.hypot(b.x - a.x, b.y - a.y);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y - 14 * k);
+        ctx.quadraticCurveTo((a.x + b.x) / 2, (a.y + b.y) / 2 - 14 * k + Math.min(14 * k, d * 0.15), b.x, b.y - 14 * k);
+        ctx.stroke();
+      }
+      for (const p of list) {
+        if (!p) continue;
+        ctx.fillStyle = 'rgba(27,42,82,0.25)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y + 3 * k, 9 * k, 4 * k, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#B88A1C';
+        rr(ctx, p.x - 4 * k, p.y - 18 * k, 8 * k, 20 * k, 3 * k);
+        ctx.fill();
+        ctx.fillStyle = '#FFD24A';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y - 18 * k, 6.5 * k, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.beginPath();
+        ctx.arc(p.x - 2 * k, p.y - 20 * k, 2.2 * k, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-    for (const p of list) {
-      posts.fillStyle(0x1b2a52, 0.25).fillEllipse(p.x, p.y + 3, 18, 8);
-      posts.fillStyle(0xb88a1c, 1).fillRoundedRect(p.x - 4, p.y - 18, 8, 20, 3);
-      posts.fillStyle(0xffd24a, 1).fillCircle(p.x, p.y - 18, 6.5);
-      posts.fillStyle(0xffffff, 0.7).fillCircle(p.x - 2, p.y - 20, 2.2);
-    }
-  };
-  side(1);
-  side(-1);
-  return { track: g, posts };
+  });
+  const img = scene.add.image(x0, y0, key).setOrigin(0, 0).setScale(1 / view.res).setDepth(3);
+  img.once(Phaser.GameObjects.Events.DESTROY, () => scene.textures.exists(key) && scene.textures.remove(key));
+  return img;
 }

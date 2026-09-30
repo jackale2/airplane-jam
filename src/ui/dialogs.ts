@@ -4,7 +4,7 @@ import { BOOSTER_IDS } from '../data/tuning.ts';
 import { DAILY_REWARDS, dailySlot, describeReward, type Reward } from '../meta/rewards.ts';
 import { services } from '../systems/services.ts';
 import type { CoinCounter } from './CoinCounter.ts';
-import { sparkle } from './fx.ts';
+import { forever, sparkle } from './fx.ts';
 import { icon, type IconName } from './icons.ts';
 import { Popup, toast } from './Popup.ts';
 import { text, UI } from './theme.ts';
@@ -84,7 +84,7 @@ export function openSettings(scene: Phaser.Scene, onReset?: () => void) {
   const pop = new Popup(scene, {
     title: 'Settings',
     width: w,
-    height: Math.min(view.h - 120, 1320),
+    height: Math.min(view.h - 120, 1110),
     onClose: () => s.save.flush(),
     content: (c, area) => {
       let y = area.y + 40;
@@ -231,21 +231,28 @@ export function openDaily(scene: Phaser.Scene, coins?: CoinCounter, onClaimed?: 
     title: 'Daily Gift',
     ribbon: 'purple',
     width: w,
-    height: 1020,
+    height: 900,
     onClose: () => undefined,
     content: (c, area) => {
       c.add(text(scene, 0, area.y + 20, ready ? 'A new gift is waiting for you!' : 'Come back tomorrow for the next gift.', 36, { color: UI.softCss, weight: 600 }));
       const cw = Math.min(180, (w - 120) / 4);
+      const gap = 18;
+      // four small boxes, then three with the big day-7 box last
+      const widths = DAILY_REWARDS.map((_, i) => (i === 6 ? cw * 1.6 : cw));
+      const pos: { x: number; y: number }[] = [];
+      [[0, 1, 2, 3], [4, 5, 6]].forEach((idxs, row) => {
+        const total = idxs.reduce((a, i) => a + widths[i]!, 0) + gap * (idxs.length - 1);
+        let x = -total / 2;
+        for (const i of idxs) {
+          pos[i] = { x: x + widths[i]! / 2, y: area.y + 170 + row * (cw + 70) };
+          x += widths[i]! + gap;
+        }
+      });
       DAILY_REWARDS.forEach((r, i) => {
-        const row = i < 4 ? 0 : 1;
-        const inRow = row ? 3 : 4;
-        const col = row ? i - 4 : i;
-        const x = (col - (inRow - 1) / 2) * (cw + 18);
-        const y = area.y + 170 + row * (cw + 70);
+        const { x, y } = pos[i]!;
         const claimed = i < today || (!ready && i === today);
         const isToday = ready && i === today;
-        const big = i === 6;
-        const bw = big ? cw * 1.6 : cw;
+        const bw = widths[i]!;
         const g = scene.add.graphics();
         g.fillStyle(isToday ? 0xffd447 : claimed ? 0xd9f5e0 : 0xeef3fb, 1).fillRoundedRect(x - bw / 2, y - cw / 2, bw, cw + 40, 24);
         g.lineStyle(4, isToday ? 0xe0a000 : claimed ? 0x7fd49a : 0xd3ddee, 1).strokeRoundedRect(x - bw / 2, y - cw / 2, bw, cw + 40, 24);
@@ -256,7 +263,7 @@ export function openDaily(scene: Phaser.Scene, coins?: CoinCounter, onClaimed?: 
         c.add(ic);
         c.add(text(scene, x, y + cw / 2 + 10, ri.label, 30, { color: UI.inkCss }));
         if (claimed) c.add(icon(scene, x + bw / 2 - 24, y - cw / 2 + 24, 'check', 40, 0x2db353));
-        if (isToday) scene.tweens.add({ targets: ic, scale: ic.scale * 1.12, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.InOut' });
+        if (isToday) forever(scene, { targets: ic, scale: ic.scale * 1.12, yoyo: true, duration: 500, ease: 'Sine.InOut' });
       });
     },
     buttons: [

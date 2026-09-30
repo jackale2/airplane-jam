@@ -765,9 +765,20 @@ function apronFloor(ctx: Ctx, w: number, h: number, y: number, p: Pal) {
   }
 }
 
+/** Scenery texture key -> use tick, least recently used first (see pruneScenery). */
+const lastUse = new Map<string, number>();
+let useTick = 0;
+
+/** The current use tick: textures used after this point are kept by `pruneScenery(..., mark)`. */
+export function sceneryMark() {
+  return useTick;
+}
+
 /** Paint a full scenery into a cached canvas texture and return its key. */
 export function sceneryTex(scene: Phaser.Scene, o: SceneryOpts) {
   const key = `scn_${o.dest}_${o.theme}_${o.layout}_${Math.round(o.w)}x${Math.round(o.h)}_${Math.round(o.horizon)}_${o.terminal ? Math.round(o.terminal.y) : 0}`;
+  lastUse.delete(key);
+  lastUse.set(key, ++useTick);
   const d = DESTINATIONS[o.dest % DESTINATIONS.length]!;
   const p = palette(o.dest, o.theme);
   return canvasTex(scene, key, o.w, o.h, (ctx, w, h) => {
@@ -789,7 +800,23 @@ export function sceneryTex(scene: Phaser.Scene, o: SceneryOpts) {
   });
 }
 
-/** Remove cached scenery textures that are not `keep` (frees memory after a resize or a theme change). */
-export function pruneScenery(scene: Phaser.Scene, keep: string[]) {
-  for (const k of scene.textures.getTextureKeys()) if (k.startsWith('scn_') && !keep.includes(k)) scene.textures.remove(k);
+/**
+ * Keep the cached scenery under `budget` canvas pixels by dropping the least recently used textures,
+ * but never one used after `mark` (those may be on screen). Scenes call this once they are built.
+ */
+export function pruneScenery(scene: Phaser.Scene, budget: number, mark: number) {
+  const tm = scene.textures;
+  const px = (k: string) => {
+    const src = tm.get(k).source[0];
+    return src ? src.width * src.height : 0;
+  };
+  for (const k of [...lastUse.keys()]) if (!tm.exists(k)) lastUse.delete(k);
+  let total = 0;
+  for (const k of lastUse.keys()) total += px(k);
+  for (const [k, t] of [...lastUse]) {
+    if (total <= budget || t > mark) break;
+    total -= px(k);
+    tm.remove(k);
+    lastUse.delete(k);
+  }
 }

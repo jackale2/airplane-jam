@@ -9,13 +9,17 @@ import { PreloadScene } from './scenes/PreloadScene.ts';
 import { ShopScene } from './scenes/ShopScene.ts';
 import { TrophiesScene } from './scenes/TrophiesScene.ts';
 import { registerServiceWorker } from './systems/pwa.ts';
+import { services } from './systems/services.ts';
 
 const parent = document.getElementById('game')!;
 const measure = () => viewFor(parent.clientWidth || window.innerWidth, parent.clientHeight || window.innerHeight);
 setView(measure());
 
+// dev only: ?renderer=canvas forces the 2D canvas renderer (much faster in headless test browsers)
+const forceCanvas = import.meta.env.DEV && new URLSearchParams(location.search).get('renderer') === 'canvas';
+
 const game = new Phaser.Game({
-  type: Phaser.AUTO,
+  type: forceCanvas ? Phaser.CANVAS : Phaser.AUTO,
   parent,
   width: view.w * view.res,
   height: view.h * view.res,
@@ -44,6 +48,16 @@ window.addEventListener('resize', onResize);
 window.visualViewport?.addEventListener('resize', onResize);
 screen.orientation?.addEventListener?.('change', onResize);
 
+// Android back button (see MainActivity.java): the active scene decides; false lets the app go to the background.
+(window as unknown as { __onBack: () => boolean }).__onBack = () => {
+  const s = game.scene.getScenes(true)[0] as (Phaser.Scene & { handleBack?: () => boolean }) | undefined;
+  try {
+    return s?.handleBack?.() ?? false;
+  } catch {
+    return false;
+  }
+};
+
 registerServiceWorker();
 
-if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game; // dev-only handle for tests and debugging
+if (import.meta.env.DEV) Object.assign(window, { __game: game, __services: services }); // dev-only handles for tests and debugging

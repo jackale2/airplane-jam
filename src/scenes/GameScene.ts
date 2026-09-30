@@ -9,7 +9,7 @@ import { COLOR_HEX } from '../data/colors.ts';
 import { loadLevel, loadZenLevel } from '../data/levelSource.ts';
 import { TUNING, type BoosterId } from '../data/tuning.ts';
 import { BoardView } from '../layout/boardView.ts';
-import { fitBoard, gameLayout, type GameLayout, type Rect } from '../layout/view.ts';
+import { fitBoard, gameLayout, type GameLayout } from '../layout/view.ts';
 import { destinationFor, DESTINATIONS } from '../meta/destinations.ts';
 import { BOOSTER_UNLOCK, isHardLevel, starsFor, type Stars, type WinReward } from '../meta/progress.ts';
 import type { LevelResult, MetaNotice } from '../systems/MetaManager.ts';
@@ -19,7 +19,7 @@ import { Button } from '../ui/Button.ts';
 import { confetti, floatText, forever, puff, ring, sparkle } from '../ui/fx.ts';
 import { icon } from '../ui/icons.ts';
 import { Popup, toast } from '../ui/Popup.ts';
-import { queuePoints } from '../ui/queueShapes.ts';
+import { layoutQueue } from '../ui/queueShapes.ts';
 import { palette, sceneryTex, type Pal, type ThemeId } from '../ui/scenery.ts';
 import { fmt, text, UI } from '../ui/theme.ts';
 import { BaseScene } from './BaseScene.ts';
@@ -317,20 +317,11 @@ export class GameScene extends BaseScene {
     panel.fillStyle(this.pal.panel, this.pal.panelA).fillRoundedRect(q.x, q.y + 6, q.w, q.h - 12, 36);
     panel.lineStyle(3, 0xffffff, 0.55).strokeRoundedRect(q.x + 2, q.y + 8, q.w - 4, q.h - 16, 34);
 
-    // passengers are sized to the gap between neighbouring slots; boxes leave headroom for their heads
-    let paxH = Math.min(150, q.h * 0.26);
-    let pts: { x: number; y: number }[] = [];
-    for (let pass = 0; pass < 2; pass++) {
-      const box: Rect = { x: q.x + 60, y: q.y + 16 + paxH * 0.95, w: q.w - 120, h: Math.max(60, q.h - paxH * 0.95 - 76) };
-      pts = queuePoints(this.level.queueShape, QUEUE_SLOTS, box);
-      const gap = Math.min(...pts.slice(1).map((p, i) => Math.hypot(p.x - pts[i]!.x, p.y - pts[i]!.y)));
-      paxH = Math.min(150, q.h * 0.3, gap * 1.55);
-    }
+    // passengers are sized to the gap between neighbouring slots
+    const { pts, paxH } = layoutQueue(this.level.queueShape, QUEUE_SLOTS, q);
     this.slotPts = pts;
     this.paxH = paxH;
-    const walk = drawWalkway(this, pts, paxH * 0.62, this.pal);
-    this.track(walk.track);
-    this.track(walk.posts);
+    this.track(drawWalkway(this, pts, paxH * 0.62, this.pal));
 
     const head = pts[0]!;
     this.headGlow = this.track(this.add.image(head.x, head.y, 'fx_glow').setTint(0xffe27a).setDepth(15).setDisplaySize(paxH * 1.25, paxH * 0.55));
@@ -1184,7 +1175,7 @@ export class GameScene extends BaseScene {
     ];
     this.popup = new Popup(this, {
       title: 'Paused',
-      height: 860,
+      height: 760,
       onClose: () => undefined,
       content: (c, area) => {
         toggles.forEach(([key, on, off], i) => {
@@ -1295,6 +1286,8 @@ export class GameScene extends BaseScene {
 
   private idleHint() {
     if (this.hintObjs.length || this.tutorialStep || (this.mode === 'level' && this.levelNo > 15)) return;
+    // the tutorial on levels 1 to 3 always comes first
+    if (this.mode === 'level' && this.levelNo <= 3 && !services().save.data.flags[`tut${this.levelNo}`]) return;
     const id = hintPlane(this.g);
     const p = id === undefined ? undefined : this.cur.get(id);
     if (!p) return;
@@ -1327,6 +1320,16 @@ export class GameScene extends BaseScene {
       this.time.delayedCall(1700, next);
     };
     next();
+  }
+
+  /** Back button: close the popup, else pause (a level) or leave (Zen). */
+  override handleBack() {
+    const p = this.topPopup();
+    if (p) return p.back();
+    if (!this.ready) return true;
+    if (this.mode === 'zen') this.go('Home');
+    else this.showPause();
+    return true;
   }
 
   // ---------- relayout ----------

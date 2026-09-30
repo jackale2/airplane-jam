@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { view } from '../../config.ts';
+import { forever } from '../../ui/fx.ts';
 import { canvasTex, rr } from '../../ui/gfx.ts';
 import { text, UI } from '../../ui/theme.ts';
 
@@ -40,7 +41,7 @@ export class Coach {
       dimImg.once('destroy', () => s.textures.remove(key));
       const glow = s.add.graphics().setDepth(81);
       glow.lineStyle(6, 0xffe27a, 1).strokeRoundedRect(h.x - 14, h.y - 14, h.w + 28, h.h + 28, 26);
-      s.tweens.add({ targets: glow, alpha: 0.35, yoyo: true, repeat: -1, duration: 650 });
+      forever(s, { targets: glow, alpha: 0.35, yoyo: true, duration: 650 });
       this.objs.push(dimImg, glow);
     }
     this.objs.push(this.bubble(o.msg, o.msgY));
@@ -64,7 +65,7 @@ export class Coach {
   hand(x: number, y: number) {
     const s = this.scene;
     const img = s.add.image(x + 40, y + 50, 'hand').setDisplaySize(120, 120).setDepth(86).setOrigin(0.25, 0.1);
-    s.tweens.add({ targets: img, x: x + 24, y: y + 28, scale: img.scale * 0.88, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    forever(s, { targets: img, x: x + 24, y: y + 28, scale: img.scale * 0.88, duration: 420, yoyo: true, ease: 'Sine.InOut' });
     return img;
   }
 }

@@ -58,56 +58,72 @@ export function ensureFxTextures(scene: Phaser.Scene) {
 
 const k = () => 1 / view.res;
 
+type Emitter = Phaser.GameObjects.Particles.ParticleEmitter;
+const pools = new WeakMap<Phaser.Scene, Map<string, Emitter>>();
+
+/** One reusable emitter per effect kind and depth, per scene (cheaper than a new emitter per burst). */
+function pooled(scene: Phaser.Scene, key: string, texture: string, depth: number, config: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig) {
+  let m = pools.get(scene);
+  if (!m) {
+    m = new Map();
+    pools.set(scene, m);
+    scene.events.once('shutdown', () => pools.delete(scene));
+  }
+  let em = m.get(key);
+  if (!em || !em.active) {
+    em = scene.add.particles(0, 0, texture, { ...config, emitting: false }).setDepth(depth);
+    m.set(key, em);
+  }
+  return em;
+}
+
+/**
+ * Tint for the next burst: one color, or a list to pick from per particle. (setParticleTint only swaps the
+ * value and keeps the op's original single-color mode, so a list would reach the renderer as-is: black.)
+ */
+function setTint(em: Emitter, tint: number | number[]) {
+  em.ops.tint.loadConfig({ tint });
+}
+
 /** Sparkle burst, tinted. */
 export function sparkle(scene: Phaser.Scene, x: number, y: number, tint: number | number[] = 0xffffff, n = 10, speed = 260) {
   if (services().save.data.settings.reducedMotion) n = Math.ceil(n / 3);
-  const em = scene.add
-    .particles(x, y, 'fx_spark', {
-      speed: { min: speed * 0.4, max: speed },
-      scale: { start: 0.9 * k(), end: 0 },
-      rotate: { min: 0, max: 180 },
-      lifespan: { min: 380, max: 650 },
-      tint,
-      emitting: false,
-    })
-    .setDepth(900);
-  em.explode(n);
-  scene.time.delayedCall(800, () => em.destroy());
+  const sp = speed > 300 ? 380 : speed > 200 ? 260 : 160;
+  const em = pooled(scene, `spark_${sp}`, 'fx_spark', 900, {
+    speed: { min: sp * 0.4, max: sp },
+    scale: { start: 0.9 * k(), end: 0 },
+    rotate: { min: 0, max: 180 },
+    lifespan: { min: 380, max: 650 },
+  });
+  setTint(em, tint);
+  em.explode(n, x, y);
 }
 
 /** Confetti rain from a point. */
 export function confetti(scene: Phaser.Scene, x: number, y: number, colors: number[], n = 70) {
   if (services().save.data.settings.reducedMotion) n = Math.ceil(n / 3);
-  const em = scene.add
-    .particles(x, y, 'fx_confetti', {
-      speed: { min: 380, max: 950 },
-      angle: { min: 205, max: 335 },
-      gravityY: 1100,
-      scale: { min: 0.8 * k(), max: 1.4 * k() },
-      rotate: { start: 0, end: 540 },
-      lifespan: 1900,
-      tint: colors,
-      emitting: false,
-    })
-    .setDepth(950);
-  em.explode(n);
-  scene.time.delayedCall(2200, () => em.destroy());
+  const em = pooled(scene, 'confetti', 'fx_confetti', 950, {
+    speed: { min: 380, max: 950 },
+    angle: { min: 205, max: 335 },
+    gravityY: 1100,
+    scale: { min: 0.8 * k(), max: 1.4 * k() },
+    rotate: { start: 0, end: 540 },
+    lifespan: 1900,
+  });
+  setTint(em, colors);
+  em.explode(n, x, y);
 }
 
 /** Soft smoke puffs. */
 export function puff(scene: Phaser.Scene, x: number, y: number, n = 8, tint = 0xffffff, depth = 54) {
-  const em = scene.add
-    .particles(x, y, 'fx_puff', {
-      speed: { min: 40, max: 150 },
-      scale: { start: 0.9 * k(), end: 0.2 * k() },
-      alpha: { start: 0.8, end: 0 },
-      lifespan: { min: 380, max: 620 },
-      tint,
-      emitting: false,
-    })
-    .setDepth(depth);
-  em.explode(n);
-  scene.time.delayedCall(800, () => em.destroy());
+  const em = pooled(scene, `puff_${depth}`, 'fx_puff', depth, {
+    speed: { min: 40, max: 150 },
+    scale: { start: 0.9 * k(), end: 0.2 * k() },
+    alpha: { start: 0.8, end: 0 },
+    lifespan: { min: 380, max: 620 },
+  });
+  setTint(em, tint);
+  em.explode(n, x, y);
 }
 
 /** Expanding ring (tap feedback). */

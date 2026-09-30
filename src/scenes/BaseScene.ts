@@ -3,7 +3,8 @@ import { view } from '../config.ts';
 import { destinationFor } from '../meta/destinations.ts';
 import { services } from '../systems/services.ts';
 import { ensureFxTextures } from '../ui/fx.ts';
-import { palette, sceneryTex, type ThemeId } from '../ui/scenery.ts';
+import { Popup } from '../ui/Popup.ts';
+import { palette, pruneScenery, sceneryMark, sceneryTex, type ThemeId } from '../ui/scenery.ts';
 
 /**
  * Shared scene plumbing: the camera maps design px to canvas px (view.res), scenes fade in and out,
@@ -21,6 +22,9 @@ export abstract class BaseScene extends Phaser.Scene {
     cam.centerOn(view.w / 2, view.h / 2);
     cam.setBackgroundColor(bg);
     cam.fadeIn(220, 255, 255, 255);
+    // once this scene has built its backdrops, free the older ones beyond about three screens' worth
+    const mark = sceneryMark();
+    this.events.once(Phaser.Scenes.Events.CREATE, () => pruneScenery(this, 3.2 * view.w * view.h * view.res * view.res, mark));
     ensureFxTextures(this);
     const onRelayout = () => this.relayout();
     this.game.events.on('relayout', onRelayout);
@@ -31,6 +35,20 @@ export abstract class BaseScene extends Phaser.Scene {
   /** Scroll the camera vertically in design px (0 = top of the design space). */
   protected scrollCameraTo(y: number) {
     this.cameras.main.centerOn(view.w / 2, view.h / 2 + y);
+  }
+
+  /** The top open popup, if any. */
+  protected topPopup(): Popup | undefined {
+    const list = this.children.list.filter((o): o is Popup => o instanceof Popup && !o.isClosed);
+    return list[list.length - 1];
+  }
+
+  /** Hardware back button (Android). Returns true if the game used it. Default: close a popup, else go home. */
+  handleBack(): boolean {
+    const p = this.topPopup();
+    if (p) return p.back();
+    this.go('Home');
+    return true;
   }
 
   /** Called when the window changes shape. Default: restart with the state from relayoutData(). */
