@@ -442,10 +442,16 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 9. **Tooling.** Node 24 runs the TypeScript scripts directly, so the code uses erasable syntax only (no enums or constructor parameter properties). `@types/node` was added as a dev dependency for the scripts.
 10. **Browser and dev behavior.** Rewarded ads always succeed after 0.4 seconds and interstitials do nothing. In `npm run dev`, purchases are simulated. A production web build grants no purchases.
 
+**Owner answers (Sep 30, 2026)**
+
+- Name: keep "Airplane Jam" as the working title for now.
+- Levels: keep placing what fits. Revisit the tap-target size after phone testing.
+- Launch monetization: ads only first. Coin packs and Remove Ads stay in the code but ship in a later update.
+- Android: no Android Studio, phone or AdMob account yet, so Milestones 5 to 7 wait.
+
 **Owner tasks and open decisions**
 
 - Final game name, app id and app icon (`capacitor.config.ts` has placeholders).
-- Ads only, or ads plus purchases at launch.
-- Approve the AdMob and purchase plugins for Milestone 6, and supply the AdMob IDs.
+- Approve the AdMob plugin for Milestone 6, and supply the AdMob IDs.
 - Publish a privacy policy and replace the placeholder URL in `SettingsScene.ts`.
 - Install Android Studio and a test phone for Milestone 5 and the 60 fps check.
