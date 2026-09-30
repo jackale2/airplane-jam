@@ -4,9 +4,9 @@ export const H = 1920;
 
 export const REGION = {
   hud: { y: 0, h: H * 0.08 },
-  queue: { y: H * 0.08, h: H * 0.22 },
-  gate: { y: H * 0.3, h: H * 0.08 },
-  apron: { y: H * 0.38, h: H * 0.5 },
+  queue: { y: H * 0.08, h: H * 0.29 },
+  gate: { y: H * 0.37, h: H * 0.075 },
+  apron: { y: H * 0.445, h: H * 0.435 },
   boosters: { y: H * 0.88, h: H * 0.12 },
 } as const;
 

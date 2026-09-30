@@ -17,7 +17,7 @@ import { queuePoints } from '../ui/queueShapes.ts';
 import { Button } from '../ui/Button.ts';
 
 const ROT = { up: 0, right: Math.PI / 2, down: Math.PI, left: -Math.PI / 2 } as const;
-const QUEUE_SLOTS = 16;
+const QUEUE_SLOTS = 14;
 const TUTORIAL = ['Tap a plane to send it out.', 'Planes park at a gate and board passengers of the same color.', 'A blocked plane bumps. Clear the way first.'];
 
 type View = Phaser.GameObjects.Container;
@@ -99,10 +99,10 @@ export class GameScene extends Phaser.Scene {
     this.drawApron(boardW, boardH);
     this.level.planes.forEach((p) => this.views.set(p.id, this.makePlane(p)));
 
-    const box = { x: 90, y: REGION.queue.y + 40, w: W - 180, h: REGION.queue.h - 70 };
+    const box = { x: 110, y: REGION.queue.y + 60, w: W - 220, h: REGION.queue.h - 110 };
     this.slotPts = queuePoints(this.level.queueShape, QUEUE_SLOTS, box);
     // passengers are sized to the gap between neighbouring slots so they never overlap
-    this.paxSize = Math.min(72, Math.floor(Math.min(...this.slotPts.slice(1).map((p, i) => Math.hypot(p.x - this.slotPts[i]!.x, p.y - this.slotPts[i]!.y))) * 0.92));
+    this.paxSize = Math.min(110, Math.floor(Math.min(...this.slotPts.slice(1).map((p, i) => Math.hypot(p.x - this.slotPts[i]!.x, p.y - this.slotPts[i]!.y))) * 0.92));
     this.drawQueueTrack();
     this.queueText = this.add.text(W - 60, REGION.queue.y + REGION.queue.h - 20, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '40px', color: '#FFFFFF', stroke: '#1B2340', strokeThickness: 8 }).setOrigin(1, 1).setDepth(30);
     this.syncQueue(false);
