@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA9F0"/>
+      <stop offset="1" stop-color="#8FD4F7"/>
+    </linearGradient>
+  </defs>
+  <rect id="background" width="512" height="512" fill="url(#sky)"/>
+  <g id="icon">
+    <g transform="rotate(38 256 256)" stroke="#1B2340" stroke-width="12" stroke-linejoin="round">
+      <polygon id="wing-left" points="226,225 92,335 92,388 226,326" fill="#E53935"/>
+      <polygon id="wing-right" points="286,225 420,335 420,388 286,326" fill="#E53935"/>
+      <polygon id="tail-left" points="226,368 160,414 160,440 226,424" fill="#E53935"/>
+      <polygon id="tail-right" points="286,368 352,414 352,440 286,424" fill="#E53935"/>
+      <rect id="fuselage" x="218" y="82" width="76" height="352" rx="38" fill="#FFFFFF"/>
+      <path id="nose" d="M218 150 A38 38 0 0 1 294 150 Z" fill="#E53935" stroke="none"/>
+      <rect id="cockpit" x="234" y="150" width="44" height="30" rx="15" fill="#2F6DB5" stroke-width="8"/>
+    </g>
+  </g>
+</svg>
