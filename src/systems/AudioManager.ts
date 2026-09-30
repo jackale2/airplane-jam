@@ -2,7 +2,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import type Phaser from 'phaser';
 import type { SaveData } from './SaveManager.ts';
 
-export type Sfx = 'click' | 'popup' | 'coin' | 'tick' | 'pop' | 'bump' | 'taxi' | 'takeoff' | 'win' | 'fail';
+export type Sfx = 'click' | 'popup' | 'coin' | 'tick' | 'pop' | 'chime' | 'bump' | 'taxi' | 'takeoff' | 'win' | 'fail';
 const FILE_SFX = new Set<Sfx>(['click', 'popup', 'coin', 'tick']);
 
 /**
@@ -104,9 +104,17 @@ export class AudioManager {
     };
 
     switch (name) {
-      case 'pop': // bubble pop: a very short upward sine chirp
-        env(0.09, 0.7);
-        tone('sine', 380 * rate, 900 * rate, 0, 0.07);
+      case 'pop': { // bubble pop: soft upward chirp plus a quiet octave layer, pitch nudged each time so it never sounds robotic
+        const r = rate * (0.96 + Math.random() * 0.08);
+        env(0.11, 0.6);
+        tone('sine', 380 * r, 950 * r, 0, 0.08);
+        tone('triangle', 760 * r, 1500 * r, 0, 0.05);
+        break;
+      }
+      case 'chime': // soft two-note "done" when a plane takes off
+        env(0.5, 0.25);
+        tone('sine', 880, 880, 0, 0.3);
+        tone('sine', 1320, 1320, 0.08, 0.35);
         break;
       case 'bump':
         env(0.18, 0.9);

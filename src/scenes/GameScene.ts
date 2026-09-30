@@ -378,6 +378,7 @@ export class GameScene extends Phaser.Scene {
       case 'PLANE_DEPARTED': {
         const v = this.views.get(e.plane)!;
         a.play('takeoff');
+        a.play('chime');
         this.emitPuff(v.x, v.y);
         this.gateText[e.gate]?.setText('');
         this.views.delete(e.plane);

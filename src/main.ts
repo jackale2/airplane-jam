@@ -14,6 +14,10 @@ const game = new Phaser.Game({
   height: H,
   backgroundColor: '#9fd7ee',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  // draw on every display refresh (120 Hz phones get 120 fps); smoothStep evens out frame-time jitter
+  fps: { target: 120, smoothStep: true },
+  render: { powerPreference: 'high-performance', antialias: true, roundPixels: false },
+  disableContextMenu: true,
   input: { activePointers: 1 },
   scene: [BootScene, PreloadScene, MenuScene, GameScene, ShopScene, SettingsScene],
 });
