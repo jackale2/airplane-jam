@@ -4,3 +4,4 @@ dist
 android/app/build
 *.log
 airport_puzzle_game_assets
+builds/
