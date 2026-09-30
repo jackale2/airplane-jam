@@ -149,7 +149,7 @@ export class GameScene extends Phaser.Scene {
   // ---------- sprites ----------
 
   private symbol(color: number, size: number) {
-    return this.add.image(0, 0, `symbol${color}`).setDisplaySize(size, size).setTint(OUTLINE_HEX).setAlpha(0.9);
+    return this.add.image(0, 0, `symbol${color}`).setDisplaySize(size, size);
   }
 
   private planeCenter(p: PlaneData) {
@@ -229,8 +229,12 @@ export class GameScene extends Phaser.Scene {
     const color = this.g.queue[idx]!;
     const size = this.paxSize;
     const c = this.add.container(0, 0).setDepth(20);
-    c.add(this.add.image(0, 0, 'passenger').setDisplaySize(size, size).setTint(COLOR_HEX[color]));
-    if (this.colorblind) c.add(this.symbol(color, size * 0.55));
+    // artwork per color; a neutral sprite tinted in code covers any extra color
+    const tex = this.textures.exists(`passenger${color}`) ? `passenger${color}` : 'passengerNeutral';
+    const img = this.add.image(0, 0, tex).setDisplaySize(size, size);
+    if (tex === 'passengerNeutral') img.setTint(COLOR_HEX[color]);
+    c.add(img);
+    if (this.colorblind) c.add(this.symbol(color, size * 0.4));
     return c;
   }
 

@@ -7,9 +7,10 @@ export const IMAGES = {
   panel: `${A}/ui/panels/UIbg.png`,
   hand: `${A}/ui/icons/tap.png`,
   coin: `${A}/ui/icons/coin.png`,
-  passenger: `${A}/ui/icons/passenger.png`,
+  passengerNeutral: `${A}/ui/passengers/passenger_neutral.png`,
   puff: `${A}/ui/fx/puffSmall.png`,
   sparkStar: `${A}/ui/fx/particleWhite_3.png`,
+  ...Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`passenger${i}`, `${A}/ui/passengers/passenger_${i}.png`])),
   ...Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`symbol${i}`, `${A}/ui/symbols/symbol_${i}.png`])),
 } as Record<string, string>;
 
@@ -29,4 +30,4 @@ export const FONTS = {
 } as const;
 
 export const planeKey = (length: number, color: number) => `plane_${length}_${color}`;
-export const planePath = (length: number, color: number) => `${A}/planes/plane_${length}_${color}.svg`;
+export const planePath = (length: number, color: number) => `${A}/planes/plane_${length}_${color}.png`;

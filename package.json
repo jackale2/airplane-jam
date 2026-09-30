@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "gen:planes": "node scripts/generate-planes.ts",
     "gen:levels": "node scripts/generate-levels.ts",
     "cap:sync": "npm run build && cap sync android",
     "cap:open": "cap open android"

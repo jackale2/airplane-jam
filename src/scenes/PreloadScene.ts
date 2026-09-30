@@ -24,7 +24,7 @@ export class PreloadScene extends Phaser.Scene {
     for (const [key, path] of Object.entries(IMAGES)) this.load.image(key, path);
     for (const [key, path] of Object.entries(SOUNDS)) this.load.audio(key, path);
     for (let length = 2; length <= 4; length++) {
-      for (let color = 0; color < 8; color++) this.load.svg(planeKey(length, color), planePath(length, color), { scale: 2 });
+      for (let color = 0; color < 8; color++) this.load.image(planeKey(length, color), planePath(length, color));
     }
     if (this.registry.get('hasMusic')) this.load.audio('music', MUSIC); // optional: no file, no music
   }

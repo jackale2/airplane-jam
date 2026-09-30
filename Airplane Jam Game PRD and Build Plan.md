@@ -421,7 +421,7 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 | Milestone | Status |
 | --- | --- |
 | 0 Setup | Done. Vite + Phaser 3.90 + TypeScript strict, Vitest, asset manifest in `src/data/assets.ts`, audio pack cloned. |
-| 1 Core mechanic | Done. All rules live in `src/core` (no Phaser). Plane SVGs come from `npm run gen:planes`. |
+| 1 Core mechanic | Done. All rules live in `src/core` (no Phaser). Planes are the owner-supplied PNG art (see decision 11). |
 | 2 Levels | Done. Generator, solver and `npm run gen:levels`; 100 levels in `src/data/levels.json`. The 200-level test passes. |
 | 3 UI and feel | Done in code: menu, HUD, pause/win/fail popups, shop, settings, tutorial on levels 1 to 3, colorblind symbols, sounds. Not yet play-tested by a person on a phone. |
 | 4 Boosters, economy, saving | Done. Three boosters (coins or rewarded ad), coins, daily bonus, versioned save that survives a missing or corrupt file. |
@@ -440,6 +440,7 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 7. **Endless levels.** Levels above 100 are generated from the level number inside a web worker, because a hard level can take several seconds.
 8. **Cell size.** The cell size is computed per level so each grid fills the apron, capped at 150 px, instead of one size for the largest grid. On the 9 x 14 grid a cell is about 68 design px, roughly 22 dp on a 360 dp phone. That is below the 48 dp tap target, and planes touch each other, so the hit area cannot grow. See the open question about grid size for levels 101 and up.
 9. **Tooling.** Node 24 runs the TypeScript scripts directly, so the code uses erasable syntax only (no enums or constructor parameter properties). `@types/node` was added as a dev dependency for the scripts.
+11. **Supplied art replaced the generated planes.** The owner's `airport_puzzle_assets` pack (24 plane PNGs, 8 colored passengers plus a neutral one, 8 symbols) is in `public/assets/planes`, `ui/passengers` and `ui/symbols`. `scripts/generate-planes.ts` and its SVGs were removed. Planes load as plain images (400 px wide, 400 px per cell of length). The neutral passenger is tinted in code only if a color has no artwork.
 10. **Browser and dev behavior.** Rewarded ads always succeed after 0.4 seconds and interstitials do nothing. In `npm run dev`, purchases are simulated. A production web build grants no purchases.
 
 **Owner answers (Sep 30, 2026)**
