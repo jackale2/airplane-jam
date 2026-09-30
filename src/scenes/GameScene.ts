@@ -161,8 +161,31 @@ export class GameScene extends Phaser.Scene {
   private makePlane(p: PlaneData): View {
     this.cur.set(p.id, p);
     const c = this.add.container(0, 0).setDepth(10);
+    const w = this.cell * 0.9;
+    const h = this.cell * p.length * 0.95;
+    // a solid color slab under the art makes the color obvious even though the fuselage is slim
+    const slab = this.add.graphics();
+    slab.fillStyle(COLOR_HEX[p.color], 0.95).fillRoundedRect(-w / 2, -h / 2, w, h, w * 0.35);
+    slab.lineStyle(Math.max(3, this.cell * 0.05), OUTLINE_HEX, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, w * 0.35);
+    c.add(slab);
     c.add(this.add.image(0, 0, planeKey(p.length, p.color)).setDisplaySize(this.cell, this.cell * p.length));
-    if (this.colorblind) c.add(this.symbol(p.color, this.cell * 0.5));
+    // big white arrow down the middle of the plane, pointing the way it will taxi
+    const len = Math.min(h * 0.72, this.cell * 1.7);
+    const head = Math.min(len * 0.5, this.cell * 0.5);
+    const hw = this.cell * 0.3; // arrow head half width
+    const sw = this.cell * 0.11; // shaft half width
+    const y0 = -len / 2;
+    const arrow = this.add.graphics();
+    arrow.fillStyle(0xffffff, 1).lineStyle(Math.max(3, this.cell * 0.045), OUTLINE_HEX, 1);
+    arrow.beginPath();
+    arrow.moveTo(0, y0).lineTo(hw, y0 + head).lineTo(sw, y0 + head).lineTo(sw, y0 + len).lineTo(-sw, y0 + len).lineTo(-sw, y0 + head).lineTo(-hw, y0 + head).closePath();
+    arrow.fillPath().strokePath();
+    c.add(arrow);
+    if (this.colorblind) {
+      const sym = this.symbol(p.color, this.cell * 0.4).setPosition(0, h / 2 - this.cell * 0.4);
+      c.add(sym);
+      c.setData('sym', sym);
+    }
     c.setSize(this.cell, this.cell * p.length);
     this.placePlane(c, p);
     c.setInteractive({ useHandCursor: true });
@@ -173,7 +196,7 @@ export class GameScene extends Phaser.Scene {
   private placePlane(c: View, p: PlaneData) {
     const { x, y } = this.planeCenter(p);
     c.setPosition(x, y).setRotation(ROT[p.dir]).setScale(1).setAlpha(1);
-    const sym = c.list[1] as Phaser.GameObjects.Image | undefined;
+    const sym = c.getData('sym') as Phaser.GameObjects.Image | undefined;
     sym?.setRotation(-c.rotation);
   }
 
@@ -217,7 +240,7 @@ export class GameScene extends Phaser.Scene {
     const p = this.g.planeInfo(pid);
     const r = this.slotRect(slot);
     v.setPosition(r.x, r.y - 10).setRotation(0).setScale(this.gateScale(p, slot)).setDepth(11);
-    (v.list[1] as Phaser.GameObjects.Image | undefined)?.setRotation(0);
+    (v.getData('sym') as Phaser.GameObjects.Image | undefined)?.setRotation(0);
   }
 
   private updateFill(slot: number) {
@@ -230,6 +253,8 @@ export class GameScene extends Phaser.Scene {
     const size = this.paxSize;
     const c = this.add.container(0, 0).setDepth(20);
     // artwork per color; a neutral sprite tinted in code covers any extra color
+    // a colored disc behind the character makes the color readable at small sizes
+    c.add(this.add.circle(0, 0, size * 0.56, COLOR_HEX[color]).setStrokeStyle(4, OUTLINE_HEX));
     const tex = this.textures.exists(`passenger${color}`) ? `passenger${color}` : 'passengerNeutral';
     const img = this.add.image(0, 0, tex).setDisplaySize(size, size);
     if (tex === 'passengerNeutral') img.setTint(COLOR_HEX[color]);
@@ -319,7 +344,7 @@ export class GameScene extends Phaser.Scene {
         await this.tweenP({ targets: v, x: cur.x + dx * dist, y: cur.y + dy * dist, duration: (dist / TUNING.taxiPxPerSec) * 1000, ease: 'Quad.In' });
         // leg 2: swing round into the gate slot
         const r = this.slotRect(e.gate);
-        const sym = v.list[1] as Phaser.GameObjects.Image | undefined;
+        const sym = v.getData('sym') as Phaser.GameObjects.Image | undefined;
         const tgtRot = 0;
         const rot0 = v.rotation;
         await this.tweenP({
