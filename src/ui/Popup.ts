@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { H, W } from '../config.ts';
 import { services } from '../systems/services.ts';
-import { Button, label } from './Button.ts';
+import { Button, FONT, label } from './Button.ts';
 
 export interface PopupButton {
   text: string;
@@ -26,13 +26,15 @@ export class Popup extends Phaser.GameObjects.Container {
     super(scene, W / 2, H / 2);
     const h = opts.height ?? 300 + opts.buttons.length * 150 + (opts.body ? 100 : 0);
     const dim = scene.add.rectangle(0, 0, W * 2, H * 2, 0x000000, 0.55).setInteractive(); // swallows taps behind
-    const panel = scene.add.image(0, 0, 'panel').setDisplaySize(760, h);
+    const panel = scene.add.graphics();
+    panel.fillStyle(0x1b2340, 1).fillRoundedRect(-380, -h / 2 + 10, 760, h, 44);
+    panel.fillStyle(0xf4f8ff, 1).fillRoundedRect(-380, -h / 2, 760, h, 44).lineStyle(8, 0x1b2340, 1).strokeRoundedRect(-380, -h / 2, 760, h, 44);
     const top = -h / 2;
     const title = label(scene, 0, top + 90, opts.title, 56);
     this.add([dim, panel, title]);
     let y = top + 190;
     if (opts.body) {
-      this.add(scene.add.text(0, y + 20, opts.body, { fontFamily: 'KenVectorThin, sans-serif', fontSize: '40px', color: '#1B2340', align: 'center', wordWrap: { width: 640 } }).setOrigin(0.5, 0));
+      this.add(scene.add.text(0, y + 20, opts.body, { fontFamily: FONT, fontSize: '42px', color: '#1B2340', align: 'center', wordWrap: { width: 640 } }).setOrigin(0.5, 0));
       y += 110;
     }
     opts.content?.(this, y);

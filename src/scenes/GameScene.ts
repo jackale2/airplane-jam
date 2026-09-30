@@ -67,7 +67,7 @@ export class GameScene extends Phaser.Scene {
   async create() {
     this.events.once('shutdown', () => (this.alive = false));
     this.cameras.main.setBackgroundColor(THEME.sky);
-    const wait = this.add.text(W / 2, 900, 'Preparing level...', { fontFamily: FONT, fontSize: '54px', color: '#FFFFFF' }).setOrigin(0.5);
+    const wait = this.add.text(W / 2, 900, 'Preparing level...', { fontFamily: FONT, fontStyle: 'bold', fontSize: '54px', color: '#FFFFFF' }).setOrigin(0.5);
     try {
       this.level = await loadLevel(this.levelNo);
     } catch (e) {
@@ -104,7 +104,7 @@ export class GameScene extends Phaser.Scene {
     // passengers are sized to the gap between neighbouring slots so they never overlap
     this.paxSize = Math.min(72, Math.floor(Math.min(...this.slotPts.slice(1).map((p, i) => Math.hypot(p.x - this.slotPts[i]!.x, p.y - this.slotPts[i]!.y))) * 0.92));
     this.drawQueueTrack();
-    this.queueText = this.add.text(W - 60, REGION.queue.y + REGION.queue.h - 20, '', { fontFamily: FONT, fontSize: '40px', color: '#FFFFFF', stroke: '#1B2340', strokeThickness: 8 }).setOrigin(1, 1).setDepth(30);
+    this.queueText = this.add.text(W - 60, REGION.queue.y + REGION.queue.h - 20, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '40px', color: '#FFFFFF', stroke: '#1B2340', strokeThickness: 8 }).setOrigin(1, 1).setDepth(30);
     this.syncQueue(false);
     this.buildGates();
 
@@ -116,34 +116,49 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBackground() {
-    const g = this.add.graphics();
-    g.fillStyle(THEME.skyDark, 1).fillRect(0, REGION.queue.y, W, REGION.queue.h + REGION.gate.h);
-    g.fillStyle(0x1e2a44, 1).fillRect(0, REGION.hud.h, W, 0); // reserved
+    this.add.image(0, 0, 'bg').setOrigin(0, 0).setDepth(-10);
+    const g = this.add.graphics().setDepth(-5);
+    // translucent panel behind the passenger queue
+    g.fillStyle(0xffffff, 0.3).fillRoundedRect(30, REGION.queue.y + 6, W - 60, REGION.queue.h - 12, 30);
   }
 
   private drawApron(w: number, h: number) {
     const g = this.add.graphics().setDepth(1);
-    g.fillStyle(THEME.apron, 1).fillRoundedRect(this.ox - 16, this.oy - 16, w + 32, h + 32, 28);
-    g.lineStyle(4, THEME.taxiLine, 0.4);
+    g.fillStyle(0x0f1220, 0.35).fillRoundedRect(this.ox - 34, this.oy - 26, w + 68, h + 68, 40); // soft drop shadow
+    g.fillStyle(0x4b5265, 1).fillRoundedRect(this.ox - 34, this.oy - 34, w + 68, h + 68, 40); // frame
+    g.fillStyle(THEME.apron, 1).fillRoundedRect(this.ox - 20, this.oy - 20, w + 40, h + 40, 30);
+    g.lineStyle(3, 0xf2a51f, 0.9); // dashed taxi grid
     const dash = (x1: number, y1: number, x2: number, y2: number) => {
       const len = Math.hypot(x2 - x1, y2 - y1);
-      for (let d = 0; d < len; d += 36) {
-        const a = d / len, b = Math.min(len, d + 20) / len;
+      for (let d = 0; d < len; d += 30) {
+        const a = d / len, b = Math.min(len, d + 17) / len;
         g.lineBetween(x1 + (x2 - x1) * a, y1 + (y2 - y1) * a, x1 + (x2 - x1) * b, y1 + (y2 - y1) * b);
       }
     };
     for (let c = 1; c < this.level.cols; c++) dash(this.ox + c * this.cell, this.oy, this.ox + c * this.cell, this.oy + h);
     for (let r = 1; r < this.level.rows; r++) dash(this.ox, this.oy + r * this.cell, this.ox + w, this.oy + r * this.cell);
+    g.fillStyle(0xffb52e, 1); // runway lights round the edge
+    for (let c = 0; c <= this.level.cols; c++) g.fillCircle(this.ox + c * this.cell, this.oy - 27, 5).fillCircle(this.ox + c * this.cell, this.oy + h + 27, 5);
+    for (let r = 0; r <= this.level.rows; r++) g.fillCircle(this.ox - 27, this.oy + r * this.cell, 5).fillCircle(this.ox + w + 27, this.oy + r * this.cell, 5);
   }
 
   private drawQueueTrack() {
     const g = this.add.graphics().setDepth(2);
     const pts = this.slotPts;
-    g.lineStyle(this.paxSize + 12, 0x3d6f93, 0.55);
-    g.beginPath().moveTo(pts[0]!.x, pts[0]!.y);
-    pts.forEach((p) => g.lineTo(p.x, p.y));
-    g.strokePath();
-    g.fillStyle(THEME.taxiLine, 0.9).fillCircle(pts[0]!.x, pts[0]!.y, 12); // head marker
+    const path = (width: number, color: number, alpha: number) => {
+      g.lineStyle(width, color, alpha).beginPath().moveTo(pts[0]!.x, pts[0]!.y);
+      pts.forEach((p) => g.lineTo(p.x, p.y));
+      g.strokePath();
+    };
+    path(this.paxSize + 26, 0x2a5c93, 0.95); // dark edge
+    path(this.paxSize + 10, 0x4f88c0, 0.95); // track
+    g.lineStyle(4, 0xffffff, 0.7); // dashed center line
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!, b = pts[i]!, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      g.lineBetween(mx - ((b.x - a.x) / l) * 9, my - ((b.y - a.y) / l) * 9, mx + ((b.x - a.x) / l) * 9, my + ((b.y - a.y) / l) * 9);
+    }
+    g.fillStyle(THEME.taxiLine, 1).fillCircle(pts[0]!.x, pts[0]!.y, 12); // head marker
   }
 
   // ---------- sprites ----------
@@ -162,19 +177,17 @@ export class GameScene extends Phaser.Scene {
     this.cur.set(p.id, p);
     const c = this.add.container(0, 0).setDepth(10);
     const h = this.cell * p.length * 0.95;
-    c.add(this.add.image(0, 0, planeKey(p.length, p.color)).setDisplaySize(this.cell, this.cell * p.length));
-    // big white arrow down the middle of the plane, pointing the way it will taxi
-    const len = Math.min(h * 0.55, this.cell * 1.3);
-    const head = Math.min(len * 0.5, this.cell * 0.42);
-    const hw = this.cell * 0.26; // arrow head half width
-    const sw = this.cell * 0.07; // shaft half width
-    const y0 = -len / 2;
+    const u = this.cell;
+    const col = COLOR_HEX[p.color];
+    // see-through arrow ahead of the nose, small chevrons behind: which way it will taxi
     const arrow = this.add.graphics();
-    arrow.fillStyle(0xffffff, 1).lineStyle(Math.max(3, this.cell * 0.045), OUTLINE_HEX, 1);
-    arrow.beginPath();
-    arrow.moveTo(0, y0).lineTo(hw, y0 + head).lineTo(sw, y0 + head).lineTo(sw, y0 + len).lineTo(-sw, y0 + len).lineTo(-sw, y0 + head).lineTo(-hw, y0 + head).closePath();
-    arrow.fillPath().strokePath();
+    arrow.fillStyle(col, 0.7).beginPath();
+    arrow.moveTo(0, -h / 2 - 0.8 * u).lineTo(0.34 * u, -h / 2 - 0.4 * u).lineTo(0.14 * u, -h / 2 - 0.4 * u).lineTo(0.14 * u, -h / 2 + 0.2 * u).lineTo(-0.14 * u, -h / 2 + 0.2 * u).lineTo(-0.14 * u, -h / 2 - 0.4 * u).lineTo(-0.34 * u, -h / 2 - 0.4 * u).closePath().fillPath();
+    arrow.lineStyle(Math.max(3, 0.08 * u), col, 0.6);
+    for (const dy of [0.08, 0.34]) arrow.beginPath().moveTo(-0.2 * u, h / 2 + dy * u).lineTo(0, h / 2 + (dy + 0.2) * u).lineTo(0.2 * u, h / 2 + dy * u).strokePath();
     c.add(arrow);
+    c.setData('arrow', arrow);
+    c.add(this.add.image(0, 0, planeKey(p.length, p.color)).setDisplaySize(this.cell, this.cell * p.length));
     if (this.colorblind) {
       const sym = this.symbol(p.color, this.cell * 0.4).setPosition(0, h / 2 - this.cell * 0.4);
       c.add(sym);
@@ -209,10 +222,10 @@ export class GameScene extends Phaser.Scene {
     this.g.gate.forEach((_, i) => {
       const r = this.slotRect(i);
       const gfx = this.add.graphics().setDepth(3);
-      gfx.fillStyle(THEME.gateFree, 1).fillRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 18);
-      gfx.lineStyle(5, THEME.gateEdge, 0.9).strokeRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 18);
-      const num = this.add.text(r.x - r.w / 2 + 12, r.y - r.h / 2 + 6, String(i + 1), { fontFamily: FONT, fontSize: '28px', color: '#FDD835' }).setDepth(4);
-      const fill = this.add.text(r.x, r.y + r.h / 2 - 6, '', { fontFamily: FONT, fontSize: '28px', color: '#FFFFFF', stroke: '#1B2340', strokeThickness: 6 }).setOrigin(0.5, 1).setDepth(12);
+      gfx.fillStyle(0x1f2433, 1).fillRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 22);
+      gfx.lineStyle(6, 0xf5c518, 1).strokeRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 22);
+      const num = this.add.text(r.x - r.w / 2 + 12, r.y - r.h / 2 + 4, String(i + 1), { fontFamily: FONT, fontStyle: 'bold', fontSize: '32px', color: '#FDD835' }).setDepth(4);
+      const fill = this.add.text(r.x, r.y + r.h / 2 - 6, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '28px', color: '#FFFFFF', backgroundColor: '#16305c', padding: { x: 10, y: 2 } }).setOrigin(0.5, 1).setDepth(12);
       this.gateGfx.push(gfx, num);
       this.gateText.push(fill);
     });
@@ -234,6 +247,7 @@ export class GameScene extends Phaser.Scene {
     const p = this.g.planeInfo(pid);
     const r = this.slotRect(slot);
     v.setPosition(r.x, r.y - 10).setRotation(0).setScale(this.gateScale(p, slot)).setDepth(11);
+    (v.getData('arrow') as Phaser.GameObjects.Graphics).setVisible(false);
     (v.getData('sym') as Phaser.GameObjects.Image | undefined)?.setRotation(0);
   }
 
@@ -246,14 +260,14 @@ export class GameScene extends Phaser.Scene {
     const color = this.g.queue[idx]!;
     const size = this.paxSize;
     const c = this.add.container(0, 0).setDepth(20);
-    // artwork per color; a neutral sprite tinted in code covers any extra color
-    // a colored disc behind the character makes the color readable at small sizes
-    c.add(this.add.circle(0, 0, size * 0.56, COLOR_HEX[color]).setStrokeStyle(4, OUTLINE_HEX));
-    const tex = this.textures.exists(`passenger${color}`) ? `passenger${color}` : 'passengerNeutral';
-    const img = this.add.image(0, 0, tex).setDisplaySize(size, size);
-    if (tex === 'passengerNeutral') img.setTint(COLOR_HEX[color]);
-    c.add(img);
-    if (this.colorblind) c.add(this.symbol(color, size * 0.4));
+    // a little bean person in the passenger's color
+    const g = this.add.graphics();
+    g.fillStyle(COLOR_HEX[color], 1).lineStyle(4, OUTLINE_HEX, 1);
+    g.fillEllipse(0, size * 0.1, size * 0.72, size * 0.62).strokeEllipse(0, size * 0.1, size * 0.72, size * 0.62);
+    g.fillCircle(0, -size * 0.24, size * 0.26).strokeCircle(0, -size * 0.24, size * 0.26);
+    g.fillStyle(0xffffff, 0.55).fillCircle(-size * 0.09, -size * 0.31, size * 0.07);
+    c.add(g);
+    if (this.colorblind) c.add(this.symbol(color, size * 0.4).setPosition(0, size * 0.12));
     return c;
   }
 
@@ -337,6 +351,7 @@ export class GameScene extends Phaser.Scene {
         const dist = toEdge + half + 10;
         await this.tweenP({ targets: v, x: cur.x + dx * dist, y: cur.y + dy * dist, duration: (dist / TUNING.taxiPxPerSec) * 1000, ease: 'Quad.In' });
         // leg 2: swing round into the gate slot
+        (v.getData('arrow') as Phaser.GameObjects.Graphics).setVisible(false);
         const r = this.slotRect(e.gate);
         const sym = v.getData('sym') as Phaser.GameObjects.Image | undefined;
         const tgtRot = 0;
@@ -419,7 +434,7 @@ export class GameScene extends Phaser.Scene {
   private showTutorial() {
     if (this.levelNo > 3 || services().save.data.tutorialSeen) return;
     const text = TUTORIAL[this.levelNo - 1]!;
-    const t = this.add.text(0, 0, text, { fontFamily: 'KenVectorThin, sans-serif', fontSize: '36px', color: '#1B2340', align: 'center', wordWrap: { width: 560 } }).setOrigin(0.5);
+    const t = this.add.text(0, 0, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: '38px', color: '#1B2340', align: 'center', wordWrap: { width: 560 } }).setOrigin(0.5);
     const bg = this.add.rectangle(0, 0, 620, t.height + 50, 0xffffff, 0.95).setStrokeStyle(6, OUTLINE_HEX);
     this.bubble = this.add.container(W / 2, REGION.queue.y + REGION.queue.h / 2 + 10, [bg, t]).setDepth(40);
     this.showHint();
@@ -560,7 +575,7 @@ export class GameScene extends Phaser.Scene {
             s.save.save();
             s.audio.syncMusic();
             b.text.setText(`${name} ${s.save.data.settings[key] ? 'On' : 'Off'}`);
-          }, { small: true, size: 36 });
+          }, { size: 36 });
           b.text.setText(`${name} ${s.save.data.settings[key] ? 'On' : 'Off'}`);
           c.add(b);
         };

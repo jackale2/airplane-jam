@@ -12,8 +12,7 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const s = services();
-    this.cameras.main.setBackgroundColor(THEME.sky);
-    this.add.rectangle(W / 2, H * 0.78, W, H * 0.44, THEME.apron); // runway strip
+    this.add.image(0, 0, 'bg').setOrigin(0, 0);
 
     // decorative planes crossing the sky
     for (let i = 0; i < 4; i++) {

@@ -20,7 +20,7 @@ export class SettingsScene extends Phaser.Scene {
 
   create() {
     const s = services();
-    this.cameras.main.setBackgroundColor(THEME.sky);
+    this.add.image(0, 0, 'bg').setOrigin(0, 0);
     label(this, W / 2, 220, 'Settings', 110, '#FFFFFF').setStroke('#1B2340', 16);
     TOGGLES.forEach(([key, name], i) => {
       const b: Button = new Button(this, W / 2, 470 + i * 190, 820, 150, '', () => {

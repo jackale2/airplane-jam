@@ -15,7 +15,7 @@ export class ShopScene extends Phaser.Scene {
 
   create() {
     const s = services();
-    this.cameras.main.setBackgroundColor(THEME.sky);
+    this.add.image(0, 0, 'bg').setOrigin(0, 0);
     label(this, W / 2, 220, 'Shop', 110, '#FFFFFF').setStroke('#1B2340', 16);
     const coins = new CoinCounter(this, W / 2 + 120, 370);
     this.note = label(this, W / 2, 1650, '', 36, '#FFFFFF').setStroke('#1B2340', 8);

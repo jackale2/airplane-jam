@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { H, W } from '../config.ts';
+import { makeBackgroundTexture } from '../ui/background.ts';
+import { FONT } from '../ui/Button.ts';
 import { services } from '../systems/services.ts';
 import { IMAGES, MUSIC, planePath, SOUNDS, planeKey } from '../data/assets.ts';
 
@@ -11,7 +13,7 @@ export class PreloadScene extends Phaser.Scene {
 
   preload() {
     this.cameras.main.setBackgroundColor(0x9fd7ee);
-    this.add.text(W / 2, H / 2 - 120, 'AIRPLANE JAM', { fontFamily: 'KenVector, sans-serif', fontSize: '96px', color: '#FFFFFF', stroke: '#1B2340', strokeThickness: 14 }).setOrigin(0.5);
+    this.add.text(W / 2, H / 2 - 120, 'AIRPLANE JAM', { fontFamily: FONT, fontStyle: 'bold', fontSize: '110px', color: '#FFFFFF', stroke: '#1B2340', strokeThickness: 14 }).setOrigin(0.5);
     const bar = this.add.graphics();
     const box = { x: W / 2 - 340, y: H / 2 + 20, w: 680, h: 50 };
     bar.fillStyle(0x1b2340, 1).fillRoundedRect(box.x, box.y, box.w, box.h, 25);
@@ -24,12 +26,13 @@ export class PreloadScene extends Phaser.Scene {
     for (const [key, path] of Object.entries(IMAGES)) this.load.image(key, path);
     for (const [key, path] of Object.entries(SOUNDS)) this.load.audio(key, path);
     for (let length = 2; length <= 4; length++) {
-      for (let color = 0; color < 8; color++) this.load.image(planeKey(length, color), planePath(length, color));
+      for (let color = 0; color < 8; color++) this.load.svg(planeKey(length, color), planePath(length, color), { scale: 2 });
     }
     if (this.registry.get('hasMusic')) this.load.audio('music', MUSIC); // optional: no file, no music
   }
 
   create() {
+    makeBackgroundTexture(this);
     services().audio.syncMusic();
     this.scene.start('Menu');
   }
