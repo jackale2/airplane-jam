@@ -12,12 +12,36 @@ describe('SaveManager.parseSave', () => {
   });
 
   it('keeps valid fields and repairs bad ones', () => {
-    const s = parseSave(JSON.stringify({ level: 12, coins: 'lots', boosters: { extraGate: 3 }, settings: { sound: false }, adsRemoved: true }));
+    const s = parseSave(JSON.stringify({ level: 12, coins: 'lots', boosters: { extraGate: 3 }, settings: { sound: false, musicVol: 7 }, adsRemoved: true }));
     expect(s.level).toBe(12);
-    expect(s.coins).toBe(0);
-    expect(s.boosters).toEqual({ extraGate: 3, sortQueue: 1, shuffleBoard: 1 });
-    expect(s.settings).toEqual({ sound: false, music: true, vibration: true, symbols: true });
+    expect(s.coins).toBe(defaultSave().coins);
+    expect(s.boosters).toEqual({ extraGate: 3, sortQueue: 0, shuffleBoard: 0 });
+    expect(s.settings).toEqual({ sound: false, music: true, vibration: true, symbols: true, musicVol: 1, sfxVol: 0.8, reducedMotion: false });
     expect(s.adsRemoved).toBe(true);
+  });
+
+  it('migrates a version 1 save', () => {
+    const v1 = { version: 1, level: 31, coins: 450, boosters: { extraGate: 2, sortQueue: 1, shuffleBoard: 0 }, settings: { sound: true, music: false, vibration: true, symbols: false }, tipsSeen: { extraGate: true, sortQueue: false }, adsRemoved: false, lastDailyReward: '2026-09-29', tutorialSeen: true };
+    const s = parseSave(JSON.stringify(v1));
+    expect(s.version).toBe(2);
+    expect([s.level, s.coins]).toEqual([31, 450]);
+    expect(s.boosters).toEqual({ extraGate: 2, sortQueue: 1, shuffleBoard: 0 });
+    expect(s.settings.music).toBe(false);
+    expect(s.settings.symbols).toBe(false);
+    expect(s.flags).toEqual({ tip_extraGate: true, tutorial: true });
+    expect(s.lastWinBonus).toBe('2026-09-29');
+    expect(s.stars).toEqual({});
+    expect(s.cosmetics).toEqual(defaultSave().cosmetics);
+  });
+
+  it('only keeps real stars, known cosmetics, and equips only what is owned', () => {
+    const s = parseSave(JSON.stringify({ stars: { 1: 3, 2: 9, x: 2, 3: 0 }, cosmetics: { owned: ['racer', 'nope', 5], livery: 'racer', outfit: 'royal', theme: 'mars' } }));
+    expect(s.stars).toEqual({ 1: 3, 2: 3 });
+    expect(s.cosmetics.owned).toContain('racer');
+    expect(s.cosmetics.owned).not.toContain('nope');
+    expect(s.cosmetics.livery).toBe('racer');
+    expect(s.cosmetics.outfit).toBe('casual'); // not owned
+    expect(s.cosmetics.theme).toBe('day'); // unknown
   });
 
   it('never allows negative or fractional numbers', () => {

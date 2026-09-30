@@ -49,9 +49,9 @@ export function buildQueue(seats: number[], mix: number, rng: Rng): number[] {
   return rng.shuffle(runs).flat();
 }
 
-function tryLevel(id: number, seed: number, extraSlots: number): LevelData | null {
+function tryLevel(id: number, seed: number, extraSlots: number, bandOverride?: Band, maxMix?: number): LevelData | null {
   const rng = makeRng(seed);
-  const band = bandFor(id);
+  const band = bandOverride ?? bandFor(id);
   const t = band.to === Infinity ? Math.min(1, (id - band.from) / 100) : (id - band.from) / (band.to - band.from);
   const target = lerp(band.planes, t);
   const nColors = lerp(band.colors, t);
@@ -74,7 +74,7 @@ function tryLevel(id: number, seed: number, extraSlots: number): LevelData | nul
 
   // Start at the target mix and relax it (longer color runs) until the solver can win at this
   // gate count. Low gate counts with a fully interleaved queue are often unwinnable.
-  const targetMix = Math.min(0.9, 0.1 + id / 120);
+  const targetMix = Math.min(maxMix ?? 0.9, 0.1 + id / 120);
   for (let m = targetMix; m > -0.3; m -= 0.15) {
     const level: LevelData = {
       id,
@@ -107,6 +107,27 @@ export function generateLevel(id: number, withPar = true): LevelData {
     }
   }
   throw new Error(`could not generate a solvable level ${id}`);
+}
+
+/** Zen mode boards: small, calm, few colors, generous gates. Deterministic per seed. */
+export const ZEN_BAND: Band = { from: 1, to: Infinity, cols: 6, rows: 8, planes: [10, 15], colors: [3, 4], lengths: [2, 3], gateSlots: 6 };
+
+export function generateZenLevel(seed: number): LevelData {
+  const band = { ...ZEN_BAND, colors: [3 + (seed % 2), 3 + (seed % 2)] as [number, number] };
+  // each board gets its own random set of colors
+  const perm = makeRng(seed * 31 + 7).shuffle([0, 1, 2, 3, 4, 5, 6, 7]);
+  const recolor = (l: LevelData): LevelData => ({
+    ...l,
+    id: -1,
+    parMinSlots: l.gateSlots,
+    planes: l.planes.map((p) => ({ ...p, color: perm[p.color]! })),
+    queue: l.queue.map((c) => perm[c]!),
+  });
+  for (let a = 0; a < 60; a++) {
+    const level = tryLevel(40 + (seed % 40), seed * 977 + a, 0, band, 0.35);
+    if (level) return recolor(level);
+  }
+  return recolor(generateLevel(5, false));
 }
 
 /** Throws if a level breaks the seat invariant or the layout rules. */

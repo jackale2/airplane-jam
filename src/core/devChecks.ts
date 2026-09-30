@@ -1,4 +1,4 @@
-import { cellSize, W } from '../config.ts';
+import { fitBoard, gameLayout, viewFor } from '../layout/view.ts';
 import { Game } from './Game.ts';
 import { planeCells } from './Board.ts';
 import { solve, type SolveResult } from './Solver.ts';
@@ -47,7 +47,9 @@ export function checkLevel(level: LevelData): LevelReport {
   if (errors.length === 0) solvable = solve(Game.create(level));
   if (solvable !== 'win') errors.push(`level is not provably solvable (solver says ${solvable})`);
 
-  const cellOnPhone = (cellSize(level.cols, level.rows) * REF_WIDTH) / W;
+  // cell size on a small phone in portrait (360 x 780 CSS px)
+  const v = viewFor(REF_WIDTH, 780);
+  const cellOnPhone = (fitBoard(gameLayout(v).board, level.cols, level.rows).cell * REF_WIDTH) / v.w;
   if (cellOnPhone < MIN_TOUCH) {
     warnings.push(`cells are ${cellOnPhone.toFixed(0)} px on a ${REF_WIDTH} px screen (< ${MIN_TOUCH}); taps snap to the nearest plane to compensate`);
   }

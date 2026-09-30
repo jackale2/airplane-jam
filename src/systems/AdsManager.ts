@@ -27,9 +27,14 @@ export class AdsManager {
     return Capacitor.isNativePlatform();
   }
 
+  /** Ads are off in the launch build (TUNING.adsEnabled); the UI hides every ad button then. */
+  get enabled() {
+    return TUNING.adsEnabled;
+  }
+
   /** Resolves true only if the reward should be granted. Guards against double grants while an ad is showing. */
   async showRewarded(): Promise<boolean> {
-    if (this.busy) return false;
+    if (!this.enabled || this.busy) return false;
     this.busy = true;
     try {
       // ponytail: browser/dev stub. Replace with the AdMob rewarded flow at Milestone 6.
@@ -42,6 +47,7 @@ export class AdsManager {
 
   /** Called after a level is won. Returns true if an interstitial was shown. */
   async maybeShowInterstitial(level: number): Promise<boolean> {
+    if (!this.enabled) return false;
     const now = Date.now();
     if (!shouldShowInterstitial({ level, lastShownLevel: this.lastShownLevel, lastShownAt: this.lastShownAt, now, adsRemoved: this.save.data.adsRemoved })) return false;
     this.lastShownLevel = level;

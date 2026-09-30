@@ -1,12 +1,10 @@
-import { TUNING, type BoosterId } from '../data/tuning.ts';
+import { BOOSTER_IDS, TUNING, type BoosterId } from '../data/tuning.ts';
+import { dayKey } from '../meta/dates.ts';
+import { winReward, type Stars, type WinReward } from '../meta/progress.ts';
+import type { Reward } from '../meta/rewards.ts';
 import type { SaveManager } from './SaveManager.ts';
 
-const today = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-/** Coins, booster counts and the daily reward, all persisted through SaveManager. */
+/** Coins and booster counts, all persisted through SaveManager. */
 export class EconomyManager {
   private readonly save: SaveManager;
   constructor(save: SaveManager) {
@@ -49,16 +47,23 @@ export class EconomyManager {
     return this.spend(TUNING.boosterCost[b]);
   }
 
-  get dailyAvailable() {
-    return this.d.lastDailyReward !== today();
+  grant(r: Reward) {
+    if (r.coins) this.d.coins += r.coins;
+    for (const id of BOOSTER_IDS) this.d.boosters[id] += r.boosters?.[id] ?? 0;
+    this.save.save();
   }
 
-  /** Coins for winning a level: base reward plus the daily bonus on the first win of the day. */
-  claimWinReward() {
-    const daily = this.dailyAvailable;
-    if (daily) this.d.lastDailyReward = today();
-    const total = TUNING.levelReward + (daily ? TUNING.dailyReward : 0);
-    this.addCoins(total);
-    return { base: TUNING.levelReward, daily: daily ? TUNING.dailyReward : 0, total };
+  /** The first win of each day pays a bonus. */
+  get firstWinAvailable() {
+    return this.d.lastWinBonus !== dayKey();
+  }
+
+  /** Coins for winning a level, paid out right away. */
+  claimWin(level: number, stars: Stars): WinReward {
+    const first = this.firstWinAvailable;
+    if (first) this.d.lastWinBonus = dayKey();
+    const r = winReward(level, stars, first);
+    this.addCoins(r.total);
+    return r;
   }
 }

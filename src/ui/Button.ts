@@ -1,100 +1,182 @@
 import Phaser from 'phaser';
-import { THEME } from '../config.ts';
 import { services } from '../systems/services.ts';
+import { canvasTex, css, darken, rr, vgrad, withShadow } from './gfx.ts';
+import { icon, type IconName } from './icons.ts';
+import { BUTTON_COLORS, text, type BtnColor } from './theme.ts';
 
-export const FONT = 'Fredoka, sans-serif';
+const PAD = 16; // room round the button in its texture for the soft shadow
 
-export function label(scene: Phaser.Scene, x: number, y: number, text: string, size = 48, color: string = THEME.panelText) {
-  return scene.add.text(x, y, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: `${size}px`, color, align: 'center' }).setOrigin(0.5);
-}
-
-export const BTN = {
-  yellow: { face: 0xffc928, edge: 0xd9971b, text: '#1B2340' },
-  green: { face: 0x2ec44f, edge: 0x1a8f35, text: '#FFFFFF' },
-  blue: { face: 0x2f73e6, edge: 0x1d4fb0, text: '#FFFFFF' },
-} as const;
-
-export type IconKind = 'pause' | 'restart' | 'gate' | 'sort' | 'shuffle';
-
-/** Small vector icons drawn into a Graphics, centered on (0, 0). `s` is the icon size. */
-export function drawIcon(g: Phaser.GameObjects.Graphics, kind: IconKind, s: number, color: number) {
-  g.fillStyle(color, 1).lineStyle(s * 0.16, color, 1);
-  const arrowHead = (x: number, y: number, dx: number, dy: number) => {
-    // triangle at (x, y) pointing along (dx, dy)
-    const nx = -dy, ny = dx, l = s * 0.3;
-    g.fillTriangle(x + dx * l, y + dy * l, x - dx * l * 0.2 + nx * l, y - dy * l * 0.2 + ny * l, x - dx * l * 0.2 - nx * l, y - dy * l * 0.2 - ny * l);
-  };
-  switch (kind) {
-    case 'pause':
-      g.fillRoundedRect(-s * 0.36, -s * 0.4, s * 0.26, s * 0.8, 4).fillRoundedRect(s * 0.1, -s * 0.4, s * 0.26, s * 0.8, 4);
-      break;
-    case 'restart': {
-      // circular arrow: three quarters of a circle, clockwise, with a head where it ends
-      const r = s * 0.34;
-      const a0 = (-40 * Math.PI) / 180, a1 = (250 * Math.PI) / 180;
-      g.beginPath().arc(0, 0, r, a0, a1, false).strokePath();
-      arrowHead(r * Math.cos(a1), r * Math.sin(a1), -Math.sin(a1), Math.cos(a1));
-      break;
-    }
-    case 'gate':
-      g.fillRect(s * 0.28, -s * 0.4, s * 0.16, s * 0.8).lineBetween(s * 0.2, 0, -s * 0.15, 0);
-      arrowHead(-s * 0.15, 0, -1, 0);
-      break;
-    case 'sort':
-      g.fillTriangle(0, -s * 0.44, s * 0.36, -s * 0.06, -s * 0.36, -s * 0.06).fillTriangle(0, s * 0.44, s * 0.36, s * 0.06, -s * 0.36, s * 0.06);
-      break;
-    case 'shuffle':
-      g.lineBetween(-s * 0.4, -s * 0.24, s * 0.22, s * 0.24).lineBetween(-s * 0.4, s * 0.24, s * 0.22, -s * 0.24);
-      arrowHead(s * 0.22, s * 0.24, 1, 0.5);
-      arrowHead(s * 0.22, -s * 0.24, 1, -0.5);
-      break;
-  }
+/** Glossy 3D button face (cached per color and size). */
+export function buttonTex(scene: Phaser.Scene, color: BtnColor, w: number, h: number, pill = false) {
+  const W = Math.round(w);
+  const H = Math.round(h);
+  const c = BUTTON_COLORS[color];
+  return canvasTex(scene, `btn_${color}_${pill ? 'p' : 'r'}_${W}x${H}`, W + PAD * 2, H + PAD * 2, (ctx) => {
+    const edge = Math.max(5, Math.round(H * 0.1));
+    const r = pill ? H / 2 : Math.min(H * 0.3, 38);
+    const x = PAD;
+    const y = PAD;
+    withShadow(ctx, 'rgba(22,32,72,0.32)', 14, 0, 7, () => {
+      ctx.fillStyle = css(c.edge);
+      rr(ctx, x, y + edge, W, H - edge, r);
+      ctx.fill();
+    });
+    ctx.fillStyle = css(c.edge);
+    rr(ctx, x, y + edge, W, H - edge, r);
+    ctx.fill();
+    ctx.fillStyle = vgrad(ctx, y, y + H - edge, [[0, c.top], [1, c.bottom]]);
+    rr(ctx, x, y, W, H - edge, r);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.30)';
+    rr(ctx, x + Math.min(12, W * 0.08), y + 6, W - 2 * Math.min(12, W * 0.08), (H - edge) * 0.36, r * 0.7);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 2.5;
+    rr(ctx, x + 2, y + 2, W - 4, H - edge - 4, Math.max(2, r - 2));
+    ctx.stroke();
+    ctx.strokeStyle = css(darken(c.edge, 0.3), 0.6);
+    ctx.lineWidth = 2;
+    rr(ctx, x + 1, y + 1, W - 2, H - 2, r);
+    ctx.stroke();
+  });
 }
 
 export interface ButtonOpts {
+  text?: string;
+  icon?: IconName;
+  color?: BtnColor;
   size?: number; // font size
-  color?: keyof typeof BTN;
-  icon?: IconKind;
+  iconSize?: number;
+  pill?: boolean;
   sound?: boolean;
+  onClick: () => void;
 }
 
-/** Chunky 3D button: face, darker lower edge, dark outline. Big enough to hit with a thumb. */
+/**
+ * Chunky button: presses in on touch, fires on release (so dragging a list never taps it), grows a little
+ * under a mouse. At least 88 design px tall for comfortable thumbs.
+ */
 export class Button extends Phaser.GameObjects.Container {
-  readonly text: Phaser.GameObjects.Text;
+  readonly bw: number;
+  readonly bh: number;
+  readonly content: Phaser.GameObjects.Container;
+  label?: Phaser.GameObjects.Text;
+  private readonly bg: Phaser.GameObjects.Image;
   private enabled = true;
+  private badgeObj?: Phaser.GameObjects.Container;
+  private downAt?: { x: number; y: number };
+  private opts: ButtonOpts;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, w: number, h: number, text: string, onClick: () => void, opts: ButtonOpts = {}) {
+  constructor(scene: Phaser.Scene, x: number, y: number, w: number, h: number, opts: ButtonOpts) {
     super(scene, x, y);
-    const c = BTN[opts.color ?? 'yellow'];
-    const r = Math.min(28, h * 0.28);
-    const g = scene.add.graphics();
-    g.fillStyle(c.edge, 1).fillRoundedRect(-w / 2, -h / 2 + h * 0.08, w, h, r);
-    g.fillStyle(c.face, 1).fillRoundedRect(-w / 2, -h / 2, w, h * 0.92, r);
-    g.fillStyle(0xffffff, 0.28).fillRoundedRect(-w / 2 + 8, -h / 2 + 6, w - 16, h * 0.22, r * 0.6);
-    g.lineStyle(5, 0x1b2340, 1).strokeRoundedRect(-w / 2, -h / 2, w, h * 0.92, r);
-    this.add(g);
-    const iconSize = h * 0.5;
-    const hasLabel = text.length > 0;
-    if (opts.icon) {
-      const ic = scene.add.graphics().setPosition(hasLabel ? -w / 2 + iconSize * 0.75 : 0, -h * 0.04);
-      drawIcon(ic, opts.icon, iconSize, c.text === '#FFFFFF' ? 0xffffff : 0x1b2340);
-      this.add(ic);
-    }
-    this.text = scene.add.text(opts.icon && hasLabel ? iconSize * 0.55 : 0, -h * 0.04, text, { fontFamily: FONT, fontStyle: 'bold', fontSize: `${opts.size ?? Math.round(h * 0.42)}px`, color: c.text, align: 'center' }).setOrigin(0.5);
-    this.add(this.text);
+    this.bw = w;
+    this.bh = h;
+    this.opts = opts;
+    const color = opts.color ?? 'green';
+    this.bg = scene.add.image(0, 0, buttonTex(scene, color, w, h, opts.pill)).setDisplaySize(w + PAD * 2, h + PAD * 2);
+    this.content = scene.add.container(0, -Math.max(5, Math.round(h * 0.1)) / 2);
+    this.add([this.bg, this.content]);
+    this.buildContent();
+
     this.setSize(w, h).setInteractive({ useHandCursor: true });
-    this.on('pointerdown', () => {
+    this.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (!this.enabled) return;
-      scene.tweens.add({ targets: this, scale: 0.94, duration: 60, yoyo: true });
+      this.downAt = { x: p.x, y: p.y };
+      scene.tweens.killTweensOf(this);
+      scene.tweens.add({ targets: this, scale: 0.93, duration: 70, ease: 'Quad.Out' });
+    });
+    this.on('pointerup', (p: Phaser.Input.Pointer) => {
+      const d = this.downAt;
+      this.downAt = undefined;
+      this.release();
+      if (!d || !this.enabled) return;
+      if (Math.hypot(p.x - d.x, p.y - d.y) > 14 * scene.scale.displayScale.x) return; // it was a drag, not a tap
       if (opts.sound !== false) services().audio.play('click');
-      onClick();
+      opts.onClick();
+    });
+    this.on('pointerout', () => {
+      this.downAt = undefined;
+      this.release(1);
+    });
+    this.on('pointerover', (p: Phaser.Input.Pointer) => {
+      if (this.enabled && !p.wasTouch && !p.isDown) scene.tweens.add({ targets: this, scale: 1.04, duration: 90 });
     });
     scene.add.existing(this);
   }
 
+  private release(to = 1) {
+    this.scene.tweens.killTweensOf(this);
+    this.scene.tweens.add({ targets: this, scale: to, duration: 160, ease: 'Back.Out' });
+  }
+
+  private buildContent() {
+    const { opts, bh: h, bw: w } = this;
+    const c = BUTTON_COLORS[opts.color ?? 'green'];
+    this.content.removeAll(true);
+    const parts: Phaser.GameObjects.GameObject[] = [];
+    let ic: Phaser.GameObjects.Image | undefined;
+    if (opts.icon) {
+      const s = opts.iconSize ?? Math.round(h * (opts.text ? 0.46 : 0.56));
+      ic = icon(this.scene, 0, 0, opts.icon, s, c.text === '#FFFFFF' ? 0xffffff : 0x5a3a00);
+      if (opts.color === 'white') ic.setTint(0x243056);
+      parts.push(ic);
+    }
+    if (opts.text) {
+      const size = opts.size ?? Math.round(h * 0.38);
+      this.label = text(this.scene, 0, 0, opts.text, size, { color: c.text, stroke: c.stroke || undefined, strokeW: c.stroke ? Math.max(4, size * 0.16) : 0 });
+      parts.push(this.label);
+    } else this.label = undefined;
+    this.content.add(parts);
+    this.layoutContent(w);
+  }
+
+  private layoutContent(w: number) {
+    const items = this.content.list as (Phaser.GameObjects.Image | Phaser.GameObjects.Text)[];
+    if (items.length === 2) {
+      const [ic, t] = items as [Phaser.GameObjects.Image, Phaser.GameObjects.Text];
+      const gap = 14;
+      const maxT = w - ic.displayWidth - gap - 40;
+      if (t.width > maxT) t.setScale(maxT / t.width);
+      const total = ic.displayWidth + gap + t.displayWidth;
+      ic.x = -total / 2 + ic.displayWidth / 2;
+      t.x = ic.x + ic.displayWidth / 2 + gap + t.displayWidth / 2;
+    } else if (items.length === 1 && items[0] instanceof Phaser.GameObjects.Text) {
+      const t = items[0];
+      if (t.width > w - 36) t.setScale((w - 36) / t.width);
+    }
+  }
+
+  setText(s: string) {
+    this.opts = { ...this.opts, text: s };
+    this.buildContent();
+    return this;
+  }
+
   setEnabled(on: boolean) {
     this.enabled = on;
-    this.setAlpha(on ? 1 : 0.5);
+    this.bg.setTint(on ? 0xffffff : 0xb8bfcc);
+    this.content.setAlpha(on ? 1 : 0.7);
+    return this;
+  }
+
+  get isEnabled() {
+    return this.enabled;
+  }
+
+  /** Red dot with a count (or just a dot when n is true). 0 or false hides it. */
+  setBadge(n: number | boolean) {
+    this.badgeObj?.destroy();
+    this.badgeObj = undefined;
+    if (!n) return this;
+    const s = this.scene;
+    const r = 22;
+    const g = s.add.graphics();
+    g.fillStyle(0xb52d33, 1).fillCircle(0, 3, r).fillStyle(0xff4d57, 1).fillCircle(0, 0, r).lineStyle(4, 0xffffff, 1).strokeCircle(0, 0, r);
+    const parts: Phaser.GameObjects.GameObject[] = [g];
+    if (typeof n === 'number') parts.push(text(s, 0, -1, n > 9 ? '9+' : String(n), 26, { color: '#FFFFFF' }));
+    this.badgeObj = s.add.container(this.bw / 2 - 12, -this.bh / 2 + 10, parts);
+    this.add(this.badgeObj);
+    s.tweens.add({ targets: this.badgeObj, scale: { from: 0.4, to: 1 }, duration: 260, ease: 'Back.Out' });
     return this;
   }
 }
