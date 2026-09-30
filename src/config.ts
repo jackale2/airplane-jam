@@ -1,13 +1,20 @@
-/** Design resolution and layout, all in design pixels (portrait 1080 x 1920). */
+/** Design space: 1080 wide; the height grows on tall phones (up to 20:9) so nothing letterboxes. */
 export const W = 1080;
-export const H = 1920;
+export const H = Math.round(
+  typeof window === 'undefined' || !window.innerWidth ? 1920 : Math.min(2400, Math.max(1920, (W * window.innerHeight) / window.innerWidth)),
+);
+
+const HUD_H = 150;
+const BOOSTERS_H = 290; // buttons plus captions, with 60+ px of padding under the captions
+const QUEUE_H = Math.round(H * 0.27);
+const GATE_H = Math.round(H * 0.07);
 
 export const REGION = {
-  hud: { y: 0, h: H * 0.08 },
-  queue: { y: H * 0.08, h: H * 0.29 },
-  gate: { y: H * 0.37, h: H * 0.075 },
-  apron: { y: H * 0.445, h: H * 0.435 },
-  boosters: { y: H * 0.88, h: H * 0.12 },
+  hud: { y: 0, h: HUD_H },
+  queue: { y: HUD_H, h: QUEUE_H },
+  gate: { y: HUD_H + QUEUE_H, h: GATE_H },
+  apron: { y: HUD_H + QUEUE_H + GATE_H, h: H - BOOSTERS_H - (HUD_H + QUEUE_H + GATE_H) },
+  boosters: { y: H - BOOSTERS_H, h: BOOSTERS_H },
 } as const;
 
 export const THEME = {
@@ -23,8 +30,13 @@ export const THEME = {
   gold: '#FDD835',
 } as const;
 
-/** Apron cell size for a grid: fills the region with a small margin, capped so small boards are not giant. */
+/** Board frame thickness and side margin (16 px on a 360 px wide phone = 48 design px). */
+export const FRAME = 34;
+export const SIDE_MARGIN = 48;
+
+/** Cell size that fills the apron region: full width minus margins, or full height, whichever is tighter. */
 export function cellSize(cols: number, rows: number) {
-  const margin = 40;
-  return Math.floor(Math.min(150, (W - margin * 2) / cols, (REGION.apron.h - margin) / rows));
+  const availW = W - 2 * (SIDE_MARGIN + FRAME);
+  const availH = REGION.apron.h - 2 * FRAME - 16;
+  return Math.floor(Math.min(170, availW / cols, availH / rows));
 }

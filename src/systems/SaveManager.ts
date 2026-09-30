@@ -6,7 +6,8 @@ export interface SaveData {
   level: number;
   coins: number;
   boosters: { extraGate: number; sortQueue: number; shuffleBoard: number };
-  settings: { sound: boolean; music: boolean; vibration: boolean; colorblind: boolean };
+  settings: { sound: boolean; music: boolean; vibration: boolean; symbols: boolean };
+  tipsSeen: { extraGate: boolean; sortQueue: boolean; shuffleBoard: boolean };
   adsRemoved: boolean;
   lastDailyReward: string; // local date, YYYY-MM-DD
   tutorialSeen: boolean;
@@ -19,7 +20,8 @@ export const defaultSave = (): SaveData => ({
   level: 1,
   coins: 0,
   boosters: { ...TUNING.startBoosters },
-  settings: { sound: true, music: true, vibration: true, colorblind: false },
+  settings: { sound: true, music: true, vibration: true, symbols: true },
+  tipsSeen: { extraGate: false, sortQueue: false, shuffleBoard: false },
   adsRemoved: false,
   lastDailyReward: '',
   tutorialSeen: false,
@@ -51,7 +53,12 @@ export function parseSave(raw: string | null | undefined): SaveData {
       sound: bool(o.settings?.sound, d.settings.sound),
       music: bool(o.settings?.music, d.settings.music),
       vibration: bool(o.settings?.vibration, d.settings.vibration),
-      colorblind: bool(o.settings?.colorblind, d.settings.colorblind),
+      symbols: bool(o.settings?.symbols, d.settings.symbols),
+    },
+    tipsSeen: {
+      extraGate: bool(o.tipsSeen?.extraGate, false),
+      sortQueue: bool(o.tipsSeen?.sortQueue, false),
+      shuffleBoard: bool(o.tipsSeen?.shuffleBoard, false),
     },
     adsRemoved: bool(o.adsRemoved, d.adsRemoved),
     lastDailyReward: typeof o.lastDailyReward === 'string' ? o.lastDailyReward : '',

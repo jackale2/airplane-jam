@@ -16,7 +16,7 @@ describe('SaveManager.parseSave', () => {
     expect(s.level).toBe(12);
     expect(s.coins).toBe(0);
     expect(s.boosters).toEqual({ extraGate: 3, sortQueue: 1, shuffleBoard: 1 });
-    expect(s.settings).toEqual({ sound: false, music: true, vibration: true, colorblind: false });
+    expect(s.settings).toEqual({ sound: false, music: true, vibration: true, symbols: true });
     expect(s.adsRemoved).toBe(true);
   });
 

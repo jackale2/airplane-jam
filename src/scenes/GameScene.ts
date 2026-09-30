@@ -2,14 +2,16 @@ import Phaser from 'phaser';
 import { Game } from '../core/Game.ts';
 import { makeRng } from '../core/rng.ts';
 import { hintPlane, shuffleBoard } from '../core/Solver.ts';
+import { planeCells } from '../core/Board.ts';
+import { logLevelCheck } from '../core/devChecks.ts';
 import { DIR_VEC, type GameEvent, type LevelData, type PlaneData } from '../core/types.ts';
-import { cellSize, REGION, THEME, W } from '../config.ts';
+import { cellSize, FRAME, H, REGION, THEME, W } from '../config.ts';
 import { planeKey } from '../data/assets.ts';
 import { COLOR_HEX, OUTLINE_HEX } from '../data/colors.ts';
 import { loadLevel } from '../data/levelSource.ts';
 import { TUNING, type BoosterId } from '../data/tuning.ts';
 import { services } from '../systems/services.ts';
-import { BoosterBar } from '../ui/BoosterBar.ts';
+import { BOOSTERS, BoosterBar } from '../ui/BoosterBar.ts';
 import { FONT, label } from '../ui/Button.ts';
 import { Hud } from '../ui/Hud.ts';
 import { Popup } from '../ui/Popup.ts';
@@ -36,7 +38,8 @@ export class GameScene extends Phaser.Scene {
   private paxSize = 64;
   private gateGfx: Phaser.GameObjects.GameObject[] = [];
   private gateText: Phaser.GameObjects.Text[] = [];
-  private queueText!: Phaser.GameObjects.Text;
+  private leftText!: Phaser.GameObjects.Text;
+  private leftBar!: Phaser.GameObjects.Graphics;
   private hud!: Hud;
   private bar!: BoosterBar;
   private hand?: Phaser.GameObjects.Image;
@@ -44,7 +47,7 @@ export class GameScene extends Phaser.Scene {
   private popup?: Popup;
   private busy = false;
   private alive = true;
-  private colorblind = false;
+  private symbols = true;
 
   constructor() {
     super('Game');
@@ -87,7 +90,8 @@ export class GameScene extends Phaser.Scene {
 
   private build() {
     const s = services();
-    this.colorblind = s.save.data.settings.colorblind;
+    this.symbols = s.save.data.settings.symbols;
+    if (import.meta.env.DEV) logLevelCheck(this.level); // dev-only validator: overlaps, bounds, solvability, touch size
     this.g = Game.create(this.level);
     this.cell = cellSize(this.level.cols, this.level.rows);
     const boardW = this.level.cols * this.cell;
@@ -98,13 +102,15 @@ export class GameScene extends Phaser.Scene {
     this.drawBackground();
     this.drawApron(boardW, boardH);
     this.level.planes.forEach((p) => this.views.set(p.id, this.makePlane(p)));
+    // one scene-level tap handler: exact hit on a plane, or the nearest plane when cells are too small to tap
+    this.input.on('pointerdown', (ptr: Phaser.Input.Pointer, over: unknown[]) => this.onPointer(ptr, over));
 
-    const box = { x: 110, y: REGION.queue.y + 60, w: W - 220, h: REGION.queue.h - 110 };
+    const box = { x: 120, y: REGION.queue.y + 70, w: W - 240, h: REGION.queue.h - 150 };
     this.slotPts = queuePoints(this.level.queueShape, QUEUE_SLOTS, box);
     // passengers are sized to the gap between neighbouring slots so they never overlap
     this.paxSize = Math.min(110, Math.floor(Math.min(...this.slotPts.slice(1).map((p, i) => Math.hypot(p.x - this.slotPts[i]!.x, p.y - this.slotPts[i]!.y))) * 0.92));
     this.drawQueueTrack();
-    this.queueText = this.add.text(W - 60, REGION.queue.y + REGION.queue.h - 20, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '40px', color: '#FFFFFF', stroke: '#1B2340', strokeThickness: 8 }).setOrigin(1, 1).setDepth(30);
+    this.buildQueueMarkers();
     this.syncQueue(false);
     this.buildGates();
 
@@ -150,8 +156,8 @@ export class GameScene extends Phaser.Scene {
       pts.forEach((p) => g.lineTo(p.x, p.y));
       g.strokePath();
     };
-    path(this.paxSize + 26, 0x2a5c93, 0.95); // dark edge
-    path(this.paxSize + 10, 0x4f88c0, 0.95); // track
+    path(this.paxSize * 1.4, 0x2a5c93, 0.95); // dark edge
+    path(this.paxSize * 1.2, 0x4f88c0, 0.95); // track: wider than a passenger so nobody spills over
     g.lineStyle(4, 0xffffff, 0.7); // dashed center line
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1]!, b = pts[i]!, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -159,6 +165,26 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(mx - ((b.x - a.x) / l) * 9, my - ((b.y - a.y) / l) * 9, mx + ((b.x - a.x) / l) * 9, my + ((b.y - a.y) / l) * 9);
     }
     g.fillStyle(THEME.taxiLine, 1).fillCircle(pts[0]!.x, pts[0]!.y, 12); // head marker
+  }
+
+  /** Highlight the front of the line, and a dark pill with the passengers left. */
+  private buildQueueMarkers() {
+    const head = this.slotPts[0]!;
+    const ring = this.add.graphics().setDepth(25);
+    ring.lineStyle(7, 0xffd400, 1).strokeCircle(head.x, head.y, this.paxSize * 0.66);
+    ring.fillStyle(0xffd400, 1).fillTriangle(head.x - 26, head.y + this.paxSize * 0.8, head.x + 26, head.y + this.paxSize * 0.8, head.x, head.y + this.paxSize * 0.8 + 30); // points down to the gates
+    this.tweens.add({ targets: ring, alpha: 0.45, duration: 600, yoyo: true, repeat: -1 });
+    const c = this.add.container(W - 210, REGION.queue.y + REGION.queue.h - 56).setDepth(30);
+    const bg = this.add.graphics().fillStyle(0x16305c, 0.95).fillRoundedRect(-170, -50, 340, 100, 50);
+    this.leftText = this.add.text(0, -14, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '48px', color: '#FFFFFF' }).setOrigin(0.5);
+    this.leftBar = this.add.graphics();
+    c.add([bg, this.leftText, this.leftBar]);
+  }
+
+  private setLeft(n: number) {
+    this.leftText.setText(`${n} left`);
+    const total = this.level.queue.length || 1;
+    this.leftBar.clear().fillStyle(0xffffff, 0.25).fillRoundedRect(-120, 20, 240, 12, 6).fillStyle(0xffd400, 1).fillRoundedRect(-120, 20, Math.max(12, (240 * n) / total), 12, 6);
   }
 
   // ---------- sprites ----------
@@ -173,31 +199,53 @@ export class GameScene extends Phaser.Scene {
     return { x: this.ox + (p.x - dx * k + 0.5) * this.cell, y: this.oy + (p.y - dy * k + 0.5) * this.cell };
   }
 
+  /**
+   * One rule for every level: the art (wings included) is scaled from the cell size so it always fits
+   * inside its own cells with a gap to the neighbours. Container extent = cells; arrow in the nose cell,
+   * color symbol in the tail cell, both drawn on the plane itself so they can never cover another plane.
+   */
   private makePlane(p: PlaneData): View {
     this.cur.set(p.id, p);
     const c = this.add.container(0, 0).setDepth(10);
-    const h = this.cell * p.length * 0.95;
     const u = this.cell;
-    const col = COLOR_HEX[p.color];
-    // see-through arrow ahead of the nose, small chevrons behind: which way it will taxi
+    const w = u - Math.max(6, u * 0.12);
+    const full = u * p.length;
+    c.add(this.add.image(0, 0, planeKey(p.length, p.color)).setDisplaySize(w, w * p.length));
+    const ay = -full / 2 + u * 0.5;
+    const al = u * 0.55, hw = u * 0.22, sw = u * 0.08;
     const arrow = this.add.graphics();
-    arrow.fillStyle(col, 0.7).beginPath();
-    arrow.moveTo(0, -h / 2 - 0.8 * u).lineTo(0.34 * u, -h / 2 - 0.4 * u).lineTo(0.14 * u, -h / 2 - 0.4 * u).lineTo(0.14 * u, -h / 2 + 0.2 * u).lineTo(-0.14 * u, -h / 2 + 0.2 * u).lineTo(-0.14 * u, -h / 2 - 0.4 * u).lineTo(-0.34 * u, -h / 2 - 0.4 * u).closePath().fillPath();
-    arrow.lineStyle(Math.max(3, 0.08 * u), col, 0.6);
-    for (const dy of [0.08, 0.34]) arrow.beginPath().moveTo(-0.2 * u, h / 2 + dy * u).lineTo(0, h / 2 + (dy + 0.2) * u).lineTo(0.2 * u, h / 2 + dy * u).strokePath();
+    arrow.fillStyle(0xffffff, 1).lineStyle(Math.max(2, u * 0.04), OUTLINE_HEX, 1);
+    arrow.beginPath().moveTo(0, ay - al / 2).lineTo(hw, ay).lineTo(sw, ay).lineTo(sw, ay + al / 2).lineTo(-sw, ay + al / 2).lineTo(-sw, ay).lineTo(-hw, ay).closePath().fillPath().strokePath();
     c.add(arrow);
     c.setData('arrow', arrow);
-    c.add(this.add.image(0, 0, planeKey(p.length, p.color)).setDisplaySize(this.cell, this.cell * p.length));
-    if (this.colorblind) {
-      const sym = this.symbol(p.color, this.cell * 0.4).setPosition(0, h / 2 - this.cell * 0.4);
+    if (this.symbols) {
+      const sym = this.symbol(p.color, u * 0.42).setPosition(0, full / 2 - u * 0.5);
       c.add(sym);
       c.setData('sym', sym);
     }
-    c.setSize(this.cell, this.cell * p.length);
     this.placePlane(c, p);
-    c.setInteractive({ useHandCursor: true });
-    c.on('pointerdown', () => this.onTap(p.id));
     return c;
+  }
+
+  /** Tap on the board: exact hit on a plane, else the nearest plane within half a 44 px target (only when cells are small). */
+  private onPointer(ptr: Phaser.Input.Pointer, over: unknown[]) {
+    if (over.length || this.busy || this.popup || this.g.status !== 'playing') return;
+    const ds = this.scale.displayScale.x; // design px per screen px
+    const slop = this.cell / ds >= 44 ? 0 : 22 * ds;
+    let best = -1;
+    let bestD = Infinity;
+    for (const p of this.g.board.list()) {
+      const cells = planeCells(p);
+      const xs = cells.map((q) => q[0]), ys = cells.map((q) => q[1]);
+      const x0 = this.ox + Math.min(...xs) * this.cell, x1 = this.ox + (Math.max(...xs) + 1) * this.cell;
+      const y0 = this.oy + Math.min(...ys) * this.cell, y1 = this.oy + (Math.max(...ys) + 1) * this.cell;
+      const d = Math.hypot(Math.max(x0 - ptr.worldX, 0, ptr.worldX - x1), Math.max(y0 - ptr.worldY, 0, ptr.worldY - y1));
+      if (d < bestD) {
+        bestD = d;
+        best = p.id;
+      }
+    }
+    if (best !== -1 && bestD <= slop) this.onTap(best);
   }
 
   private placePlane(c: View, p: PlaneData) {
@@ -207,8 +255,12 @@ export class GameScene extends Phaser.Scene {
     sym?.setRotation(-c.rotation);
   }
 
+  private slotCount() {
+    return Math.max(6, this.g.gate.length);
+  }
+
   private slotRect(i: number) {
-    const n = this.g.gate.length;
+    const n = this.slotCount();
     const w = Math.min(160, (W - 80) / n - 12);
     const total = n * (w + 12) - 12;
     return { x: (W - total) / 2 + i * (w + 12) + w / 2, y: REGION.gate.y + REGION.gate.h / 2, w, h: REGION.gate.h - 16 };
@@ -219,16 +271,26 @@ export class GameScene extends Phaser.Scene {
     this.gateText.forEach((o) => o.destroy());
     this.gateGfx = [];
     this.gateText = [];
-    this.g.gate.forEach((_, i) => {
+    for (let i = 0; i < this.slotCount(); i++) {
       const r = this.slotRect(i);
       const gfx = this.add.graphics().setDepth(3);
+      if (i >= this.g.gate.length) {
+        // locked slot: the GATE booster or Revive unlocks the next one
+        gfx.fillStyle(0x1f2433, 0.55).fillRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 22);
+        gfx.lineStyle(5, 0x6b7386, 0.8).strokeRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 22);
+        gfx.fillStyle(0x9aa3b8, 0.9).fillRoundedRect(r.x - 20, r.y - 2, 40, 32, 6);
+        gfx.lineStyle(7, 0x9aa3b8, 0.9).beginPath().arc(r.x, r.y - 2, 13, Math.PI, 0, false).strokePath();
+        this.gateGfx.push(gfx);
+        this.gateText.push(this.add.text(0, 0, '').setVisible(false));
+        continue;
+      }
       gfx.fillStyle(0x1f2433, 1).fillRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 22);
       gfx.lineStyle(6, 0xf5c518, 1).strokeRoundedRect(r.x - r.w / 2, r.y - r.h / 2, r.w, r.h, 22);
       const num = this.add.text(r.x - r.w / 2 + 12, r.y - r.h / 2 + 4, String(i + 1), { fontFamily: FONT, fontStyle: 'bold', fontSize: '32px', color: '#FDD835' }).setDepth(4);
       const fill = this.add.text(r.x, r.y + r.h / 2 - 6, '', { fontFamily: FONT, fontStyle: 'bold', fontSize: '28px', color: '#FFFFFF', backgroundColor: '#16305c', padding: { x: 10, y: 2 } }).setOrigin(0.5, 1).setDepth(12);
       this.gateGfx.push(gfx, num);
       this.gateText.push(fill);
-    });
+    }
     this.g.gate.forEach((pid, i) => {
       if (pid === null) return;
       this.dockPlane(this.views.get(pid)!, i);
@@ -267,7 +329,7 @@ export class GameScene extends Phaser.Scene {
     g.fillCircle(0, -size * 0.24, size * 0.26).strokeCircle(0, -size * 0.24, size * 0.26);
     g.fillStyle(0xffffff, 0.55).fillCircle(-size * 0.09, -size * 0.31, size * 0.07);
     c.add(g);
-    if (this.colorblind) c.add(this.symbol(color, size * 0.4).setPosition(0, size * 0.12));
+    if (this.symbols) c.add(this.symbol(color, size * 0.4).setPosition(0, size * 0.12));
     return c;
   }
 
@@ -295,7 +357,7 @@ export class GameScene extends Phaser.Scene {
       } else if (animate) this.tweens.add({ targets: v, x: target.x, y: target.y, duration: 90 });
       else v.setPosition(target.x, target.y);
     }
-    this.queueText.setText(`${this.g.queue.length - head} left`);
+    this.setLeft(this.g.queue.length - head);
   }
 
   // ---------- input and event playback ----------
@@ -420,7 +482,7 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: v, alpha: 1, duration: 150 });
       } else this.tweens.add({ targets: v, x: target.x, y: target.y, duration: 90 });
     }
-    this.queueText.setText(`${this.g.queue.length - nextHead} left`);
+    this.setLeft(this.g.queue.length - nextHead);
   }
 
   private emitPuff(x: number, y: number) {
@@ -460,6 +522,23 @@ export class GameScene extends Phaser.Scene {
   private useBooster(id: BoosterId) {
     if (this.busy || this.popup || this.g.status !== 'playing') return;
     const eco = services().economy;
+    const save = services().save;
+    if (!save.data.tipsSeen[id]) {
+      // first use: explain what the booster does before spending anything
+      save.data.tipsSeen[id] = true;
+      save.save();
+      const b = BOOSTERS.find((x) => x.id === id)!;
+      this.openPopup({
+        title: b.name,
+        body: b.tip,
+        height: 760,
+        buttons: [
+          { text: 'Use it', onClick: () => { this.popup = undefined; this.useBooster(id); } },
+          { text: 'Not now', onClick: () => { this.popup = undefined; } },
+        ],
+      });
+      return;
+    }
     const attempt = () => this.applyBooster(id);
     if (eco.count(id) > 0) {
       if (attempt()) eco.use(id);
@@ -512,13 +591,13 @@ export class GameScene extends Phaser.Scene {
         return true;
       case 'shuffleBoard':
         if (this.g.board.count < 2) return this.toast('Nothing to shuffle'), false;
-        this.reshuffle();
+        if (!this.reshuffle()) return this.toast('No safe shuffle found'), false;
         return true;
     }
   }
 
-  private reshuffle() {
-    shuffleBoard(this.g, makeRng(Date.now()));
+  private reshuffle(): boolean {
+    if (!shuffleBoard(this.g, makeRng(Date.now()))) return false; // board untouched, booster not spent
     this.busy = true;
     this.tweens.add({
       targets: [...this.views].filter(([id]) => this.g.board.has(id)).map(([, v]) => v),
@@ -529,7 +608,6 @@ export class GameScene extends Phaser.Scene {
           const v = this.views.get(p.id)!;
           this.cur.set(p.id, p);
           this.placePlane(v, p);
-          v.removeAllListeners('pointerdown').on('pointerdown', () => this.onTap(p.id));
           v.setAlpha(0);
           this.tweens.add({ targets: v, alpha: 1, duration: 200 });
         }
@@ -537,20 +615,24 @@ export class GameScene extends Phaser.Scene {
         this.showHint();
       },
     });
+    return true;
   }
 
   private toast(msg: string) {
-    const t = label(this, W / 2, 1560, msg, 44, '#FFFFFF').setStroke('#1B2340', 10).setDepth(1200);
-    this.tweens.add({ targets: t, y: 1480, alpha: 0, duration: 1200, delay: 300, onComplete: () => t.destroy() });
+    const t = label(this, W / 2, H - 400, msg, 44, '#FFFFFF').setStroke('#1B2340', 10).setDepth(1200);
+    this.tweens.add({ targets: t, y: H - 480, alpha: 0, duration: 1200, delay: 300, onComplete: () => t.destroy() });
     return true;
   }
 
   // ---------- popups and results ----------
 
   private openPopup(opts: ConstructorParameters<typeof Popup>[1]) {
-    this.popup = new Popup(this, opts);
-    this.popup.once(Phaser.GameObjects.Events.DESTROY, () => (this.popup = undefined));
-    return this.popup;
+    const pop = new Popup(this, opts);
+    this.popup = pop;
+    pop.once(Phaser.GameObjects.Events.DESTROY, () => {
+      if (this.popup === pop) this.popup = undefined;
+    });
+    return pop;
   }
 
   private onHidden() {

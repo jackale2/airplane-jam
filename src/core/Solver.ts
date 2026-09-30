@@ -71,21 +71,22 @@ export function parMinSlots(level: LevelData, cap = NODE_CAP): number {
 }
 
 /**
- * Shuffle Board booster: new random layout of the planes still on the apron. Prefers a layout the
- * solver can win from the current gate/queue state; falls back to the last (always clearable) layout.
+ * Shuffle Board booster: new random layout of the planes still on the apron. Only ever applies a layout
+ * the solver can win from the current gate/queue state; returns false (board untouched) if none is found.
  */
-export function shuffleBoard(game: Game, rng: Rng, attempts = 20): void {
+export function shuffleBoard(game: Game, rng: Rng, attempts = 40): boolean {
   const specs = game.board.list().map(({ id, color, length }) => ({ id, color, length }));
-  if (specs.length < 2) return;
-  let last = game.board.list();
+  if (specs.length < 2) return false;
   for (let i = 0; i < attempts; i++) {
-    // try longest planes first; retry until every plane fits
+    // try longest planes first; retry until every plane fits AND the solver can still win from here
     const layout = layoutPlanes([...specs].sort((a, b) => b.length - a.length), game.level.cols, game.level.rows, rng);
     if (layout.length !== specs.length) continue;
-    last = layout;
     const probe = game.clone();
     probe.relayout(layout);
-    if (solve(probe, 20_000) === 'win') break;
+    if (solve(probe, 50_000) === 'win') {
+      game.relayout(layout);
+      return true;
+    }
   }
-  game.relayout(last);
+  return false; // board left untouched
 }

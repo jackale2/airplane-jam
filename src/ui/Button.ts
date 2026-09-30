@@ -28,9 +28,14 @@ export function drawIcon(g: Phaser.GameObjects.Graphics, kind: IconKind, s: numb
     case 'pause':
       g.fillRoundedRect(-s * 0.36, -s * 0.4, s * 0.26, s * 0.8, 4).fillRoundedRect(s * 0.1, -s * 0.4, s * 0.26, s * 0.8, 4);
       break;
-    case 'restart':
-      g.fillRect(-s * 0.4, -s * 0.4, s * 0.2, s * 0.8).fillTriangle(s * 0.4, -s * 0.42, s * 0.4, s * 0.42, -s * 0.12, 0);
+    case 'restart': {
+      // circular arrow: three quarters of a circle, clockwise, with a head where it ends
+      const r = s * 0.34;
+      const a0 = (-40 * Math.PI) / 180, a1 = (250 * Math.PI) / 180;
+      g.beginPath().arc(0, 0, r, a0, a1, false).strokePath();
+      arrowHead(r * Math.cos(a1), r * Math.sin(a1), -Math.sin(a1), Math.cos(a1));
       break;
+    }
     case 'gate':
       g.fillRect(s * 0.28, -s * 0.4, s * 0.16, s * 0.8).lineBetween(s * 0.2, 0, -s * 0.15, 0);
       arrowHead(-s * 0.15, 0, -1, 0);

@@ -20,6 +20,14 @@ export async function initServices(game: Phaser.Game): Promise<Services> {
   const save = new SaveManager();
   await save.load();
   const economy = new EconomyManager(save);
+  if (import.meta.env.DEV) {
+    // dev flag: http://localhost:5173/?coins=500 sets the balance (never in a production build)
+    const n = Number(new URLSearchParams(location.search).get('coins'));
+    if (Number.isFinite(n) && n > 0) {
+      save.data.coins = Math.floor(n);
+      save.save();
+    }
+  }
   s = { save, economy, audio: new AudioManager(game, save.data.settings), ads: new AdsManager(save), iap: new IapManager(save, economy) };
   return s;
 }

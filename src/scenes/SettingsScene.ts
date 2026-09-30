@@ -10,7 +10,7 @@ const TOGGLES = [
   ['sound', 'Sound'],
   ['music', 'Music'],
   ['vibration', 'Vibration'],
-  ['colorblind', 'Symbols'],
+  ['symbols', 'Symbols'],
 ] as const;
 
 export class SettingsScene extends Phaser.Scene {

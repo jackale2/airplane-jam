@@ -10,7 +10,8 @@
     "gen:levels": "node scripts/generate-levels.ts",
     "cap:sync": "npm run build && cap sync android",
     "cap:open": "cap open android",
-    "gen:planes": "node scripts/generate-planes.ts"
+    "gen:planes": "node scripts/generate-planes.ts",
+    "check:levels": "node scripts/check-levels.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
