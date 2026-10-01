@@ -81,6 +81,14 @@ function slash(ctx: Ctx) {
 }
 
 const GLYPHS: Record<string, (ctx: Ctx) => void> = {
+  cloud(ctx) {
+    ctx.beginPath();
+    ctx.arc(32, 60, 18, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.arc(50, 42, 22, Math.PI, Math.PI * 1.95);
+    ctx.arc(70, 58, 16, Math.PI * 1.4, Math.PI * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  },
   pause(ctx) {
     rr(ctx, 22, 16, 20, 68, 8);
     ctx.fill();

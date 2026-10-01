@@ -1,4 +1,4 @@
-package com.example.airplanejam;
+package com.jackale2.airplanejam;
 
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
@@ -8,6 +8,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(PlayGamesPlugin.class); // Google Play Games cloud save (see PlayGamesPlugin)
         super.onCreate(savedInstanceState);
         // Phones stay in portrait. Tablets, foldables and Chromebooks may rotate: the game has a
         // landscape layout (and Android 16 ignores orientation locks on large screens anyway).

@@ -162,6 +162,8 @@ export function parseSave(raw: string | null | undefined): SaveData {
 /** Capacitor Preferences (falls back to localStorage in the browser). */
 export class SaveManager {
   data: SaveData = defaultSave();
+  /** Called after every write (the cloud backup listens). */
+  onFlush?: () => void;
   private timer: ReturnType<typeof setTimeout> | undefined;
 
   async load() {
@@ -183,6 +185,7 @@ export class SaveManager {
     clearTimeout(this.timer);
     this.timer = undefined;
     Preferences.set({ key: KEY, value: JSON.stringify(this.data) }).catch(() => {});
+    this.onFlush?.();
   }
 
   /** Start over (Settings > Reset progress). */

@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Airplane Jam</string>
     <string name="title_activity_main">Airplane Jam</string>
-    <string name="package_name">com.example.airplanejam</string>
-    <string name="custom_url_scheme">com.example.airplanejam</string>
+    <string name="package_name">com.jackale2.airplanejam</string>
+    <string name="custom_url_scheme">com.jackale2.airplanejam</string>
 </resources>

@@ -9,8 +9,12 @@ import { icon, type IconName } from './icons.ts';
 import { Popup, toast } from './Popup.ts';
 import { text, UI } from './theme.ts';
 
-// TODO(owner): replace with the published privacy policy URL before release (docs/privacy-policy.html is ready to host).
-export const PRIVACY_URL = 'https://example.com/airplane-jam/privacy';
+/**
+ * Where public/legal/ (privacy policy, terms, support) is hosted, without a trailing slash. Set the
+ * VITE_LEGAL_URL build variable (GitHub repository variable LEGAL_URL in CI); empty hides the links.
+ */
+export const LEGAL_URL = ((import.meta.env?.VITE_LEGAL_URL as string | undefined) ?? '').replace(/\/+$/, '');
+export const SUPPORT_EMAIL = 'alidioow@gmail.com';
 export const APP_VERSION = '1.0.0';
 
 const BOOSTER_ICON: Record<string, IconName> = { extraGate: 'gate', sortQueue: 'sort', shuffleBoard: 'shuffle' };
@@ -81,10 +85,11 @@ export function openSettings(scene: Phaser.Scene, onReset?: () => void) {
   const st = s.save.data.settings;
   const w = Math.min(860, view.w - 56);
   const rowH = 108;
+  const cloud = s.cloud.supported;
   const pop = new Popup(scene, {
     title: 'Settings',
     width: w,
-    height: Math.min(view.h - 120, 1110),
+    height: Math.min(view.h - 120, 1110 + (cloud ? rowH : 0)),
     onClose: () => s.save.flush(),
     content: (c, area) => {
       let y = area.y + 40;
@@ -123,13 +128,33 @@ export function openSettings(scene: Phaser.Scene, onReset?: () => void) {
         }));
         y += rowH;
       }
+      if (cloud) {
+        // Google Play Games cloud save
+        label('Cloud save', 'cloud');
+        const st2 = text(scene, w / 2 - 190, y, '', 30, { color: UI.softCss, weight: 600 }).setOrigin(1, 0.5);
+        const btn = new ButtonLite(scene, w / 2 - 100, y, 150, 80, 'Sign in', 'cloud', () => {
+          if (s.cloud.state.signedIn) return;
+          st2.setText('Signing in...');
+          void s.cloud.signIn().then(() => refresh());
+        }, 'blue');
+        const refresh = () => {
+          const on = s.cloud.state.signedIn;
+          st2.setText(on ? (s.cloud.state.player ? `Play Games: ${s.cloud.state.player}` : 'Play Games: on') : 'Google Play Games');
+          if (st2.width > w * 0.42) st2.setScale((w * 0.42) / st2.width);
+          btn.setVisible(!on);
+          st2.setX(on ? w / 2 - 40 : w / 2 - 190);
+        };
+        refresh();
+        c.add([st2, btn]);
+        y += rowH;
+      }
       y += 20;
       const small = (x: number, str: string, ic: IconName, fn: () => void, color: 'blue' | 'white' | 'red' = 'white') => {
         const b = new ButtonLite(scene, x, y, 240, 96, str, ic, fn, color);
         c.add(b);
       };
       small(-260, 'How to play', 'question', () => showHowTo(scene));
-      small(0, 'Privacy', 'info', () => window.open(PRIVACY_URL, '_blank'));
+      small(0, 'Privacy', 'info', () => showLegal(scene));
       small(260, 'Credits', 'star', () => showCredits(scene));
       y += 130;
       small(0, 'Reset progress', 'restart', () => confirmReset(scene, onReset), 'red');
@@ -173,6 +198,7 @@ function confirmReset(scene: Phaser.Scene, onReset?: () => void) {
         color: 'red',
         onClick: () => {
           services().save.reset();
+          void services().cloud.push(true); // so the cloud backup does not bring the old progress back
           services().meta.refreshDay();
           onReset?.();
         },
@@ -206,10 +232,29 @@ export function showHowTo(scene: Phaser.Scene) {
   });
 }
 
+/** Privacy and terms in a nutshell, with links to the full pages when they are hosted. */
+function showLegal(scene: Phaser.Scene) {
+  const open = (page: string) => window.open(`${LEGAL_URL}/${page}.html`, '_blank');
+  new Popup(scene, {
+    title: 'Privacy & Terms',
+    body:
+      'No ads, no analytics, no purchases. Your progress is saved on this device. On Android, if you sign in to Google Play Games, a copy is also kept in your Play Games account so you can continue on a new phone.\n\n' +
+      `Coins and items are earned by playing and have no money value. Questions: ${SUPPORT_EMAIL}`,
+    height: 760,
+    buttons: LEGAL_URL
+      ? [
+          { text: 'Privacy', color: 'blue', onClick: () => open('privacy') },
+          { text: 'Terms', color: 'blue', onClick: () => open('terms') },
+        ]
+      : [{ text: 'Close', onClick: () => undefined }],
+    onClose: LEGAL_URL ? () => undefined : undefined,
+  });
+}
+
 function showCredits(scene: Phaser.Scene) {
   new Popup(scene, {
     title: 'Credits',
-    body: 'Game design, art and code: the Airplane Jam team.\n\nFont: Fredoka (SIL Open Font License).\nIcons: Kenney (CC0).\nMusic and sounds are generated live in the game.',
+    body: 'Game design, art and code: jackale2.\n\nFont: Fredoka (SIL Open Font License).\nIcons: Kenney (CC0).\nMusic and sounds are generated live in the game.',
     buttons: [{ text: 'Close', onClick: () => undefined }],
   });
 }

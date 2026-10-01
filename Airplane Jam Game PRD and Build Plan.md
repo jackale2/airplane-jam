@@ -451,6 +451,7 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 18. **Boosters.** Unlock at levels 4, 7 and 10 with 2 free each; afterwards they cost 100, 100 and 150 coins. A deadlock offers Retry or one more gate (a Gate booster, or 120 coins, doubling per continue).
 19. **Monetization at launch.** None: no ads, no purchases, no consent form. Coins come from wins, stars, the first win of the day, destinations, daily gifts, missions, achievements and Zen boards, and buy boosters and cosmetics.
 20. **Phones in practice.** The queue walkway (carpet, stanchions, belts) is baked into one texture, particle emitters are pooled, looping tweens end with their objects, and cached scenery is capped at about three screens of texture memory. Queue shapes stretch to fill the panel and travelers are sized so none stand on top of another (unit tested on six screen sizes). The Android back button closes a dialog, pauses a level or goes back to the home screen, where it leaves the app. Icon colors are painted into their textures, so the canvas fallback renderer shows them too.
+21. **Google Play prep (Oct 1, 2026).** Package `com.jackale2.airplanejam`, developer jackale2, support alidioow@gmail.com (owner answers). Cloud save through Google Play Games Services v2 Saved Games (a small native plugin, `PlayGamesPlugin.java`): the cloud copy is restored only when it is further along (level, stars, wins, passengers) and this device's settings stay; uploads at most once a minute and when the app goes to the background. Without a Play Games project id the game is device-only. Legal pages live in `public/legal/`; Play listing files in `fastlane/metadata/android/en-US/`. The owner creates the upload key; CI signs the release bundle when the secrets exist.
 
 **Owner answers (Sep 30, 2026)**
 
@@ -462,8 +463,7 @@ Updated Sep 30, 2026. This section records what was built, where the build diffe
 
 **Owner tasks and open decisions**
 
-- Final game name and app id (`capacitor.config.ts` still has `com.example.airplanejam`, which Google Play rejects).
-- Host `docs/privacy-policy.html` with a real support email and put its URL in `src/ui/dialogs.ts` and the store listings.
+- Host `public/legal/` and set the `LEGAL_URL` repository variable; set up Play Games Services and `PLAY_GAMES_APP_ID` (see `docs/PLAY_RELEASE.md`).
 - Create the upload keystore and add the signing secrets (see `README.md`).
 - Test on real phones (60 fps, haptics, safe areas), then Play internal testing.
 - Later: approve the AdMob and purchase plugins if ads or purchases come in an update.

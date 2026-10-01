@@ -31,18 +31,25 @@ npm run gen:art      # regenerate the plane and traveler SVGs in public/assets
 
 ## Android
 
-Every push to `main` builds a debug APK in GitHub Actions (`.github/workflows/android.yml`); download it from the run's **airplane-jam-debug-apk** artifact.
+Every push to `main` (and every manual run of **Actions > Android > Run workflow**) builds in GitHub Actions (`.github/workflows/android.yml`):
 
-Local build (JDK 21 and the Android SDK): `npm run cap:sync`, then `cd android && ./gradlew assembleDebug`.
+- **airplane-jam-debug-apk**: a debug APK to install on a phone for testing.
+- **airplane-jam-release-aab**: the signed `app-release.aab` for Google Play, once the signing secrets below are set. Without them you get **airplane-jam-release-aab-unsigned**, which Play does not accept.
 
-### Release build (Google Play)
+The version code is the workflow run number. Local build (JDK 21 and the Android SDK): `npm run cap:sync`, then `cd android && ./gradlew assembleDebug`.
 
-1. Create an upload keystore once and keep a backup:
-   `keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000`
-2. In GitHub, add repository secrets: `ANDROID_KEYSTORE_BASE64` (output of `base64 -w0 upload.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
-3. Run the workflow: it also builds a signed **app-release.aab** (artifact **airplane-jam-release-aab**). The version code is the workflow run number.
+### Release signing and settings (GitHub > Settings > Secrets and variables > Actions)
 
-Before the first upload, set the final app id (see `ASSETS_TODO.md`).
+| Name | Kind | What |
+| --- | --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | secret | your upload keystore, base64 (`base64 -w0 upload.jks`) |
+| `ANDROID_KEYSTORE_PASSWORD` | secret | keystore password |
+| `ANDROID_KEY_ALIAS` | secret | key alias, for example `upload` |
+| `ANDROID_KEY_PASSWORD` | secret | key password |
+| `PLAY_GAMES_APP_ID` | variable | Google Play Games project id; turns on cloud save |
+| `LEGAL_URL` | variable | where `public/legal/` is hosted; turns on the Privacy and Terms links |
+
+Create the upload keystore once and back it up: `keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000`. The whole Google Play walkthrough is `docs/PLAY_RELEASE.md`.
 
 ## iOS
 
@@ -50,8 +57,10 @@ Before the first upload, set the final app id (see `ASSETS_TODO.md`).
 
 ## Store assets
 
-- Listing text, category, rating and data-safety answers: `docs/STORE_LISTING.md`
-- Privacy policy page to host: `docs/privacy-policy.html`
+- Google Play listing, ready to upload: `fastlane/metadata/android/en-US/` (text, icon, feature graphic, phone and tablet screenshots)
+- Play Console walkthrough and form answers (content rating, data safety, target audience, Play Games setup): `docs/PLAY_RELEASE.md`
+- Listing text for both stores: `docs/STORE_LISTING.md`
+- Privacy policy, terms of use and support pages to host: `public/legal/`
 - Screenshots and the 1024 x 500 feature graphic: `store/` (regenerate with `npm run dev` running, then `npm run store:shots`)
 
 See `ASSETS_TODO.md` for the few things only the owner can do, and `CREDITS.md` for asset credits.

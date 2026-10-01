@@ -4,7 +4,7 @@ Draft text for the store pages. Lengths are checked against the store limits.
 
 ## Name
 
-**Airplane Jam** (working title, 12 characters; Play allows 30, App Store 30)
+**Airplane Jam: Airport Puzzle** on Google Play (28 of 30 characters); **Airplane Jam** on the App Store
 
 ## Short description (Play, 80 characters max)
 
@@ -49,7 +49,8 @@ Draft text for the store pages. Lengths are checked against the store limits.
 >
 > FAIR AND FRIENDLY
 > • No ads and no purchases. Everything is earned by playing
-> • Plays fully offline
+> • Plays offline
+> • Cloud save with Google Play Games: continue on a new phone
 > • Color symbols for colorblind players, reduced motion and volume settings
 > • Works on phones, tablets and Chromebooks, in portrait and landscape
 
@@ -58,15 +59,13 @@ Draft text for the store pages. Lengths are checked against the store limits.
 - Category: Puzzle (Play), Games > Puzzle (App Store). Secondary: Casual.
 - Tags / keywords (App Store, 100 characters): `airplane,plane,puzzle,jam,parking,traffic,airport,relaxing,sort,color,match,brain,zen,casual,offline`
 
-## Content rating
+## Content rating, data safety and the rest of App content
 
-- Everyone / 4+. No violence, no user content, no chat, no ads, no purchases, no gambling.
+Google Play answers (content rating, target audience, data safety, ads, app access) are in `docs/PLAY_RELEASE.md`. Play listing files ready to upload are in `fastlane/metadata/android/en-US/`.
 
-## Data safety (Play) and App Privacy (App Store)
+## App Store privacy (iOS)
 
-- Data collected: **none**. Data shared: **none**.
-- The game stores progress only on the device. No account, no analytics, no ads.
-- Privacy policy URL: host `docs/privacy-policy.html` (for example with GitHub Pages) and paste its URL.
+Data collected: **none** on iOS (no Play Games there; progress stays on the device). Privacy policy URL: `<LEGAL_URL>/privacy.html` (see `docs/PLAY_RELEASE.md` for hosting).
 
 ## Graphics
 

@@ -22,6 +22,8 @@ export class BootScene extends Phaser.Scene {
       .catch(() => undefined);
     Promise.allSettled([...fonts, music]) // a missing font falls back to a system font, never blocks the game
       .then(() => initServices(this.game))
+      // Google Play Games: give a newer cloud save (new phone, reinstall) a few seconds to arrive
+      .then((s) => Promise.race([s.cloud.start(), new Promise((r) => setTimeout(r, 4000))]))
       .then(() => this.scene.start('Preload'))
       .catch((e) => {
         console.error(e);
