@@ -25,7 +25,7 @@ export type Sfx =
   | 'sort'
   | 'tick';
 
-export type Haptic = 'light' | 'medium' | 'heavy' | 'success' | 'warning';
+export type Haptic = 'light' | 'pop' | 'medium' | 'heavy' | 'success' | 'warning';
 
 const PENTA = [0, 2, 4, 7, 9];
 
@@ -137,15 +137,16 @@ export class AudioManager {
   haptic(kind: Haptic = 'light') {
     if (!this.settings.vibration) return;
     const now = performance.now();
-    if (kind === 'light' && now - this.lastHaptic < 45) return;
+    // light taps and boarding pops come in fast bursts: keep them distinct instead of one long buzz
+    if ((kind === 'light' && now - this.lastHaptic < 45) || (kind === 'pop' && now - this.lastHaptic < 60)) return;
     this.lastHaptic = now;
-    const fallback = () => navigator.vibrate?.(kind === 'light' ? 8 : kind === 'medium' ? 16 : kind === 'heavy' ? 28 : kind === 'success' ? [12, 60, 18] : [30, 50, 30]);
+    const fallback = () => navigator.vibrate?.(kind === 'light' ? 8 : kind === 'pop' || kind === 'medium' ? 16 : kind === 'heavy' ? 28 : kind === 'success' ? [12, 60, 18] : [30, 50, 30]);
     const p =
       kind === 'success'
         ? Haptics.notification({ type: NotificationType.Success })
         : kind === 'warning'
           ? Haptics.notification({ type: NotificationType.Warning })
-          : Haptics.impact({ style: kind === 'light' ? ImpactStyle.Light : kind === 'medium' ? ImpactStyle.Medium : ImpactStyle.Heavy });
+          : Haptics.impact({ style: kind === 'light' ? ImpactStyle.Light : kind === 'pop' || kind === 'medium' ? ImpactStyle.Medium : ImpactStyle.Heavy });
     p.catch(() => {
       try {
         fallback();
@@ -159,7 +160,7 @@ export class AudioManager {
   board(seat: number, pan = 0) {
     const n = this.mood.root + 12 + PENTA[seat % 5]! + 12 * Math.floor(seat / 5);
     this.play('tap', { note: n, pan, kind: 'bubble' });
-    this.haptic('light');
+    this.haptic('pop');
   }
 
   play(name: Sfx, o: { rate?: number; pan?: number; note?: number; kind?: 'bubble' } = {}) {
@@ -242,12 +243,27 @@ export class AudioManager {
     switch (name) {
       case 'tap':
         if (o.kind === 'bubble' && o.note !== undefined) {
-          // bubble pop: quick upward blip settling on the note, a soft overtone and a tiny pluck
+          // big juicy bubble pop: a "bloop" whose pitch springs up past the note and settles on it
+          // (real bubbles rise in pitch as they close), a low thump for weight, a crisp pop click,
+          // a glassy overtone and a tiny echo bubble a fifth up
           const f = midiHz(o.note);
-          tone('sine', f * 0.62, f, 0, 0.004, 0.2, 0.26);
-          tone('sine', f * 2, f * 2, 0.002, 0.003, 0.07, 0.05);
-          noise('highpass', 3500, 3000, 0.7, 0, 0.002, 0.018, 0.035);
-          wet(0.28);
+          const bloop = c.createOscillator();
+          const be = c.createGain();
+          bloop.type = 'sine';
+          bloop.frequency.setValueAtTime(f * 0.45, t0);
+          bloop.frequency.exponentialRampToValueAtTime(f * 1.12, t0 + 0.045);
+          bloop.frequency.exponentialRampToValueAtTime(f, t0 + 0.12);
+          be.gain.setValueAtTime(0.0001, t0);
+          be.gain.linearRampToValueAtTime(0.5, t0 + 0.004);
+          be.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26);
+          bloop.connect(be).connect(out);
+          bloop.start(t0);
+          bloop.stop(t0 + 0.3);
+          tone('sine', Math.max(70, f * 0.25), Math.max(55, f * 0.2), 0, 0.003, 0.09, 0.3); // thump
+          noise('bandpass', 2600, 1300, 1.4, 0, 0.001, 0.035, 0.16); // pop click
+          tone('sine', f * 2, f * 2.12, 0.004, 0.003, 0.1, 0.09); // overtone
+          tone('sine', f * 0.75, f * 1.5, 0.075, 0.003, 0.09, 0.13); // echo bubble
+          wet(0.34);
         } else {
           tone('sine', 260, 150, 0, 0.004, 0.08, 0.22);
           noise('bandpass', 2600, 1800, 1.2, 0, 0.002, 0.03, 0.05);

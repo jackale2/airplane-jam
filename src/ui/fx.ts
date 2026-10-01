@@ -99,6 +99,21 @@ export function sparkle(scene: Phaser.Scene, x: number, y: number, tint: number 
   em.explode(n, x, y);
 }
 
+/** Burst of little colored bubbles that float up and pop (boarding). */
+export function bubbles(scene: Phaser.Scene, x: number, y: number, color: number, n = 7) {
+  if (services().save.data.settings.reducedMotion) n = Math.ceil(n / 3);
+  const em = pooled(scene, 'bubbles', 'fx_dot', 58, {
+    speed: { min: 90, max: 260 },
+    angle: { min: 200, max: 340 },
+    gravityY: -120,
+    scale: { start: 0.75 * k(), end: 0 },
+    alpha: { start: 1, end: 0.2 },
+    lifespan: { min: 320, max: 520 },
+  });
+  setTint(em, [color, 0xffffff, color]);
+  em.explode(n, x, y);
+}
+
 /** Confetti rain from a point. */
 export function confetti(scene: Phaser.Scene, x: number, y: number, colors: number[], n = 70) {
   if (services().save.data.settings.reducedMotion) n = Math.ceil(n / 3);

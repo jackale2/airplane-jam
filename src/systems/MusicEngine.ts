@@ -21,6 +21,13 @@ const PENTA: Record<Flavour, number[]> = {
 
 export const midiHz = (m: number) => 440 * 2 ** ((m - 69) / 12);
 
+/**
+ * Notes are scheduled this far ahead on the audio clock. The scheduler runs on the main thread, so a
+ * long frame (a level being built, a slow phone) must never leave the audio thread without notes.
+ */
+const LOOKAHEAD = 1.5;
+const TICK_MS = 200;
+
 export class MusicEngine {
   private readonly ctx: AudioContext;
   readonly out: GainNode;
@@ -34,6 +41,10 @@ export class MusicEngine {
   private pending?: { root: number; flavour: Flavour; calm: boolean };
   private lastMel = 0;
   private playing = false;
+  /** Per-session bus: stopping cuts off the notes already scheduled ahead. */
+  private bus?: GainNode;
+  private hats?: AudioNode;
+  private snare?: AudioNode;
 
   constructor(ctx: AudioContext, dest: AudioNode, reverb: AudioNode) {
     this.ctx = ctx;
@@ -70,9 +81,30 @@ export class MusicEngine {
     this.out.gain.linearRampToValueAtTime(volume, t + 2.5);
     if (this.playing) return;
     this.playing = true;
+    this.openBus();
     this.nextTime = t + 0.1;
     this.step = 0;
-    this.timer = setInterval(() => this.schedule(), 60);
+    this.schedule();
+    this.timer = setInterval(() => this.schedule(), TICK_MS);
+  }
+
+  /** Fresh bus with the shared percussion filters (one filter each instead of one per hit). */
+  private openBus() {
+    const c = this.ctx;
+    const bus = c.createGain();
+    bus.connect(this.out);
+    const hp = c.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 7000;
+    hp.connect(bus);
+    const bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1800;
+    bp.Q.value = 0.8;
+    bp.connect(bus);
+    this.bus = bus;
+    this.hats = hp;
+    this.snare = bp;
   }
 
   setVolume(v: number) {
@@ -90,6 +122,13 @@ export class MusicEngine {
     this.playing = false;
     clearInterval(this.timer);
     this.timer = undefined;
+    // notes already scheduled ahead fade with the bus and are then cut off
+    const bus = this.bus;
+    this.bus = undefined;
+    if (bus) {
+      bus.gain.setTargetAtTime(0, t, 0.2);
+      setTimeout(() => bus.disconnect(), 1500);
+    }
   }
 
   private get beat() {
@@ -97,11 +136,16 @@ export class MusicEngine {
   }
 
   private schedule() {
-    if (this.ctx.state !== 'running') return;
-    const ahead = this.ctx.currentTime + 0.25;
-    // never try to catch up after a long pause (tab hidden): jump forward
-    if (this.nextTime < this.ctx.currentTime - 0.3) this.nextTime = this.ctx.currentTime + 0.05;
-    while (this.nextTime < ahead) {
+    if (this.ctx.state !== 'running' || !this.bus) return;
+    const now = this.ctx.currentTime;
+    const half = this.beat / 2;
+    // after a stall longer than the lookahead, skip the missed eighths but stay on the beat grid
+    if (this.nextTime < now + 0.02) {
+      const missed = Math.ceil((now + 0.05 - this.nextTime) / half);
+      this.nextTime += missed * half;
+      this.step += missed;
+    }
+    while (this.nextTime < now + LOOKAHEAD) {
       this.playStep(this.step, this.nextTime);
       this.nextTime += this.beat / 2;
       this.step++;
@@ -121,7 +165,7 @@ export class MusicEngine {
     const tt = t + swing;
 
     if (barStep === 0) {
-      for (const v of voicing) this.pad(midiHz(chordRoot + 12 + v), tt, this.beat * 8.4);
+      this.pad(voicing.map((v) => midiHz(chordRoot + 12 + v)), tt, this.beat * 8.4);
       this.bass(midiHz(chordRoot - 12 + (chordRoot < 50 ? 12 : 0)), tt, this.beat * 3);
     }
     if (barStep === 8 && !this.calm) this.bass(midiHz(chordRoot - 12 + (chordRoot < 50 ? 12 : 0) + 7), tt, this.beat * 2);
@@ -150,7 +194,8 @@ export class MusicEngine {
     g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
   }
 
-  private pad(f: number, t: number, dur: number) {
+  /** A whole chord through one filter and one envelope; the outer notes get a detuned twin for width. */
+  private pad(freqs: number[], t: number, dur: number) {
     const c = this.ctx;
     const g = c.createGain();
     const lp = c.createBiquadFilter();
@@ -159,26 +204,29 @@ export class MusicEngine {
     lp.frequency.linearRampToValueAtTime(1300, t + dur * 0.5);
     lp.frequency.linearRampToValueAtTime(800, t + dur);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.028, t + 1.6);
-    g.gain.setValueAtTime(0.028, t + dur - 1.4);
+    g.gain.linearRampToValueAtTime(0.034, t + 1.6);
+    g.gain.setValueAtTime(0.034, t + dur - 1.4);
     g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.6);
-    lp.connect(g).connect(this.out);
-    for (const det of [-6, 6]) {
-      const o = c.createOscillator();
-      o.type = 'triangle';
-      o.frequency.value = f;
-      o.detune.value = det;
-      o.connect(lp);
-      o.start(t);
-      o.stop(t + dur + 0.7);
-    }
+    lp.connect(g).connect(this.bus!);
+    freqs.forEach((f, i) => {
+      const dets = i === 0 || i === freqs.length - 1 ? [-7, 7] : [i % 2 ? 5 : -5];
+      for (const det of dets) {
+        const o = c.createOscillator();
+        o.type = 'triangle';
+        o.frequency.value = f;
+        o.detune.value = det;
+        o.connect(lp);
+        o.start(t);
+        o.stop(t + dur + 0.7);
+      }
+    });
   }
 
   private keys(f: number, t: number, vel: number) {
     const c = this.ctx;
     const g = c.createGain();
     this.env(g, t, 0.008, vel, 1.6);
-    g.connect(this.out);
+    g.connect(this.bus!);
     const o = c.createOscillator();
     o.type = 'sine';
     o.frequency.value = f;
@@ -188,7 +236,7 @@ export class MusicEngine {
     o2.type = 'sine';
     o2.frequency.value = f * 2;
     this.env(g2, t, 0.005, vel * 0.25, 0.5);
-    o2.connect(g2).connect(this.out);
+    o2.connect(g2).connect(this.bus!);
     for (const x of [o, o2]) {
       x.start(t);
       x.stop(t + 1.8);
@@ -202,7 +250,7 @@ export class MusicEngine {
     const o = c.createOscillator();
     o.type = 'sine';
     o.frequency.value = f;
-    o.connect(g).connect(this.out);
+    o.connect(g).connect(this.bus!);
     o.start(t);
     o.stop(t + dur + 0.1);
   }
@@ -222,12 +270,9 @@ export class MusicEngine {
     const c = this.ctx;
     const src = c.createBufferSource();
     src.buffer = this.noiseBuf();
-    const hp = c.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 7000;
     const g = c.createGain();
     this.env(g, t, 0.004, vel, 0.07);
-    src.connect(hp).connect(g).connect(this.out);
+    src.connect(g).connect(this.hats!);
     src.start(t, Math.random() * 0.5);
     src.stop(t + 0.1);
   }
@@ -239,7 +284,7 @@ export class MusicEngine {
     o.frequency.setValueAtTime(110, t);
     o.frequency.exponentialRampToValueAtTime(48, t + 0.12);
     this.env(g, t, 0.004, 0.16, 0.22);
-    o.connect(g).connect(this.out);
+    o.connect(g).connect(this.bus!);
     o.start(t);
     o.stop(t + 0.3);
   }
@@ -248,13 +293,9 @@ export class MusicEngine {
     const c = this.ctx;
     const src = c.createBufferSource();
     src.buffer = this.noiseBuf();
-    const bp = c.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 1800;
-    bp.Q.value = 0.8;
     const g = c.createGain();
     this.env(g, t, 0.003, 0.06, 0.12);
-    src.connect(bp).connect(g).connect(this.out);
+    src.connect(g).connect(this.snare!);
     src.start(t, Math.random() * 0.5);
     src.stop(t + 0.15);
   }

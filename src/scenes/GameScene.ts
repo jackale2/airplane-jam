@@ -16,7 +16,7 @@ import type { LevelResult, MetaNotice } from '../systems/MetaManager.ts';
 import { ensureLivery } from '../systems/artLoader.ts';
 import { services } from '../systems/services.ts';
 import { Button } from '../ui/Button.ts';
-import { confetti, floatText, forever, puff, ring, sparkle } from '../ui/fx.ts';
+import { bubbles, confetti, floatText, forever, puff, ring, sparkle } from '../ui/fx.ts';
 import { icon } from '../ui/icons.ts';
 import { Popup, toast } from '../ui/Popup.ts';
 import { layoutQueue } from '../ui/queueShapes.ts';
@@ -681,8 +681,11 @@ export class GameScene extends BaseScene {
         const sc = v.base;
         v.bounce?.stop();
         v.c.setScale(sc);
-        v.bounce = this.tweens.add({ targets: v.c, scaleX: sc * 1.06, scaleY: sc * 0.95, duration: 70, yoyo: true, onComplete: () => v.c.setScale(sc) });
-        if (!this.reduced) sparkle(this, v.c.x, v.c.y - 20, COLOR_HEX[e.color]!, 4, 160);
+        v.bounce = this.tweens.add({ targets: v.c, scaleX: sc * 1.1, scaleY: sc * 0.9, duration: 80, yoyo: true, ease: 'Quad.Out', onComplete: () => v.c.setScale(sc) });
+        if (!this.reduced) {
+          sparkle(this, v.c.x, v.c.y - 20, COLOR_HEX[e.color]!, 6, 200);
+          bubbles(this, v.c.x, v.c.y - 10, COLOR_HEX[e.color]!, 6);
+        }
       }
       this.notify(s.meta.track({ type: 'board', color: e.color, zen: this.mode === 'zen' }));
     };

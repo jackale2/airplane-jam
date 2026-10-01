@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { view } from '../../config.ts';
 import { COLOR_HEX } from '../../data/colors.ts';
 import type { Rect } from '../../layout/view.ts';
+import { bubbles } from '../../ui/fx.ts';
 import { canvasTex, css, rr } from '../../ui/gfx.ts';
 import { icon } from '../../ui/icons.ts';
 import { text } from '../../ui/theme.ts';
@@ -164,8 +165,17 @@ export class GateRow {
     this.redraw(s);
     const { pts, rad } = this.dotLayout(s, s.cap);
     const p = pts[s.filled - 1]!;
-    const pop = this.scene.add.circle(s.x + p.x, s.y + p.y, rad, COLOR_HEX[s.color]!).setDepth(6);
-    this.scene.tweens.add({ targets: pop, scale: 2.1, alpha: 0, duration: 300, ease: 'Quad.Out', onComplete: () => pop.destroy() });
+    const x = s.x + p.x;
+    const y = s.y + p.y;
+    const color = COLOR_HEX[s.color]!;
+    // the new seat light springs in big and settles, with a flash ring and a burst of bubbles
+    const dot = this.scene.add.circle(x, y, rad, color).setDepth(7).setScale(1.9);
+    this.scene.tweens.add({ targets: dot, scale: 1, duration: 260, ease: 'Back.Out', onComplete: () => dot.destroy() });
+    const flash = this.scene.add.circle(x, y, rad, 0xffffff, 0.9).setDepth(8);
+    this.scene.tweens.add({ targets: flash, scale: 1.5, alpha: 0, duration: 160, ease: 'Quad.Out', onComplete: () => flash.destroy() });
+    const ring = this.scene.add.circle(x, y, rad).setStrokeStyle(Math.max(3, rad * 0.35), color).setDepth(6);
+    this.scene.tweens.add({ targets: ring, scale: 3.4, alpha: 0, duration: 380, ease: 'Cubic.Out', onComplete: () => ring.destroy() });
+    bubbles(this.scene, x, y, color, 7);
   }
 
   clearSeats(i: number) {

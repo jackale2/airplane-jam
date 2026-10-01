@@ -18,6 +18,17 @@ setView(measure());
 // dev only: ?renderer=canvas forces the 2D canvas renderer (much faster in headless test browsers)
 const forceCanvas = import.meta.env.DEV && new URLSearchParams(location.search).get('renderer') === 'canvas';
 
+// A slightly larger audio buffer than the default "interactive" one: busy phones stop crackling and
+// the music never runs dry, while taps still sound instant.
+const audioContext = (() => {
+  try {
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    return AC ? new AC({ latencyHint: 'balanced' }) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
 const game = new Phaser.Game({
   type: forceCanvas ? Phaser.CANVAS : Phaser.AUTO,
   parent,
@@ -28,6 +39,7 @@ const game = new Phaser.Game({
   render: { powerPreference: 'high-performance', antialias: true, roundPixels: false },
   disableContextMenu: true,
   input: { activePointers: 2 },
+  audio: audioContext ? { context: audioContext } : {},
   scene: [BootScene, PreloadScene, HomeScene, MapScene, GameScene, ShopScene, TrophiesScene],
 });
 
