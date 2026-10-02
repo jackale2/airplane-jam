@@ -9,8 +9,8 @@ import { icon, type IconName } from './icons.ts';
 import { Popup, toast } from './Popup.ts';
 import { text, UI } from './theme.ts';
 
-// TODO(owner): replace with the published privacy policy URL before release (docs/privacy-policy.html is ready to host).
-export const PRIVACY_URL = 'https://example.com/airplane-jam/privacy';
+// Published by .github/workflows/pages.yml from docs/privacy-policy.html.
+export const PRIVACY_URL = 'https://jackale2.github.io/airplane-jam/privacy-policy.html';
 export const APP_VERSION = '1.0.0';
 
 const BOOSTER_ICON: Record<string, IconName> = { extraGate: 'gate', sortQueue: 'sort', shuffleBoard: 'shuffle' };

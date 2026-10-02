@@ -64,7 +64,7 @@ Draft text for the store pages. Lengths are checked against the store limits.
 
 ## Data safety (Play) and App Privacy (App Store)
 
-- Data collected: **none**. Data shared: **none**.
+- Data collected and shared (via Google AdMob): **Device or other IDs** (advertising ID), plus approximate location (IP) and app interactions for ads and analytics. Nothing else.
 - The game stores progress only on the device. No account, no analytics. Ads are served by Google AdMob (advertising ID).
 - Privacy policy URL: host `docs/privacy-policy.html` (for example with GitHub Pages) and paste its URL.
 
