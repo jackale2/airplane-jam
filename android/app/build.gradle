@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.example.airplanejam"
+    namespace = "com.codeccraft.airplanejam"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.example.airplanejam"
+        applicationId "com.codeccraft.airplanejam"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes VERSION_CODE (the workflow run number) so every uploaded build is newer than the last

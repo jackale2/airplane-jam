@@ -1,4 +1,4 @@
-package com.example.airplanejam;
+package com.codeccraft.airplanejam;
 
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;

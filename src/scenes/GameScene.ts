@@ -18,7 +18,7 @@ import { services } from '../systems/services.ts';
 import { Button } from '../ui/Button.ts';
 import { confetti, floatText, forever, puff, ring, sparkle } from '../ui/fx.ts';
 import { icon } from '../ui/icons.ts';
-import { Popup, toast } from '../ui/Popup.ts';
+import { Popup, toast, type PopupButton } from '../ui/Popup.ts';
 import { layoutQueue } from '../ui/queueShapes.ts';
 import { palette, sceneryTex, type Pal, type ThemeId } from '../ui/scenery.ts';
 import { fmt, text, UI } from '../ui/theme.ts';
@@ -853,7 +853,7 @@ export class GameScene extends BaseScene {
       },
       buttons: [
         { text: 'Home', icon: 'home', color: 'blue', onClick: () => this.go('Home') },
-        { text: 'Next', icon: 'play', color: 'green', onClick: () => this.nextLevel() },
+        { text: 'Next', icon: 'play', color: 'green', onClick: () => void this.nextLevel() },
       ],
     });
     this.popup.once('destroy', () => {
@@ -866,8 +866,10 @@ export class GameScene extends BaseScene {
     }
   }
 
-  private nextLevel() {
+  private async nextLevel() {
     const w = this.win;
+    await services().ads.maybeShowInterstitial(this.levelNo);
+    if (!this.alive) return;
     if (w?.result.arrived !== null && w?.result.arrived !== undefined) this.showPostcard(w.result.arrived, () => this.go('Game', { mode: 'level', level: this.levelNo + 1 }));
     else this.go('Game', { mode: 'level', level: this.levelNo + 1 });
   }
@@ -913,12 +915,13 @@ export class GameScene extends BaseScene {
     const owned = s.economy.count('extraGate');
     const unlocked = this.levelNo >= BOOSTER_UNLOCK.extraGate;
     const cost = TUNING.continueCost * 2 ** this.continues;
-    const buttons = [
+    const buttons: PopupButton[] = [
       { text: 'Retry', icon: 'restart' as const, color: 'blue' as const, onClick: () => this.restartLevel() },
       owned > 0 && unlocked
         ? { text: `Use Gate booster (${owned})`, icon: 'gate' as const, color: 'green' as const, onClick: () => this.continueWith('booster') }
         : { text: `+1 Gate  ${cost}`, icon: 'coin' as const, color: 'green' as const, keepOpen: true, onClick: () => this.continueWith('coins') },
     ];
+    if (s.ads.enabled) buttons.splice(1, 0, { text: 'Free Gate (ad)', icon: 'play' as const, color: 'yellow' as const, keepOpen: true, onClick: () => void this.continueWithAd() });
     this.popup = new Popup(this, {
       title: 'Out of gates!',
       ribbon: 'red',
@@ -930,6 +933,14 @@ export class GameScene extends BaseScene {
       this.popup = undefined;
       this.popupKind = null;
     });
+  }
+
+  private async continueWithAd() {
+    if (!(await services().ads.showRewarded()) || !this.alive) return;
+    this.popup?.close();
+    this.continues++;
+    this.bar?.refresh();
+    this.addGate();
   }
 
   private continueWith(pay: 'booster' | 'coins') {
@@ -1077,6 +1088,26 @@ export class GameScene extends BaseScene {
       content: (c, area) => c.add(icon(this, 0, area.y + 70, info.icon, 120, 0x3a82f0)),
       buttons: [
         { text: 'Not now', color: 'blue', onClick: () => undefined },
+        ...(s.ads.enabled
+          ? [
+              {
+                text: 'Free (ad)',
+                icon: 'play' as const,
+                color: 'yellow' as const,
+                keepOpen: true,
+                onClick: () =>
+                  void s.ads.showRewarded().then((ok) => {
+                    if (!ok || !this.alive) return;
+                    this.popup?.close();
+                    if (this.applyBooster(id)) {
+                      this.boostersUsed++;
+                      this.notify(s.meta.track({ type: 'booster' }));
+                    }
+                    this.bar?.refresh();
+                  }),
+              },
+            ]
+          : []),
         {
           text: `Buy  ${cost}`,
           icon: 'coin',

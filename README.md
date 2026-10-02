@@ -13,7 +13,7 @@ A calm, satisfying one-thumb puzzle: tap planes to taxi them out of a crowded ap
 - **ASMR feel:** generative lo-fi music per destination, boarding pops tuned to the music's key, bells and whooshes, gentle haptics, squash-and-stretch animations.
 - **Every screen:** phones (portrait), tablets (portrait and landscape), foldables and desktops; the board turns sideways when that gives bigger cells. Mouse, touch and keyboard (Esc pause, R restart, 1/2/3 boosters, Enter confirms).
 - **Accessibility:** color symbols (on by default), reduced motion, separate music and sound volumes.
-- **No ads and no purchases at launch.** The ad and purchase code is kept but switched off (`src/data/tuning.ts`).
+- **Ads via Google AdMob** (interstitial between levels, optional rewarded gates and boosters; `TUNING.adsEnabled`). Test ads in debug builds, live units only in the signed release bundle (`VITE_ADS_LIVE=1`). No purchases at launch.
 
 Design notes: `docs/ART_DIRECTION.md` (genre research and look), `Airplane Jam Game PRD and Build Plan.md` (rules, economy and decisions log).
 

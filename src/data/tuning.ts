@@ -18,7 +18,7 @@ export const TUNING = {
   ],
   removeAdsId: 'remove_ads',
   /** Launch build: no ads and no purchases. The managers stay in the code for a later update. */
-  adsEnabled: false,
+  adsEnabled: true,
   purchasesEnabled: false,
   interstitial: { fromLevel: 6, everyLevels: 3, minGapMs: 90_000 },
   taxiPxPerSec: 1100,

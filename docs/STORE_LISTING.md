@@ -48,7 +48,7 @@ Draft text for the store pages. Lengths are checked against the store limits.
 > • Ten achievements with many tiers to complete
 >
 > FAIR AND FRIENDLY
-> • No ads and no purchases. Everything is earned by playing
+> • Free to play with optional rewarded ads. Everything can be earned by playing
 > • Plays fully offline
 > • Color symbols for colorblind players, reduced motion and volume settings
 > • Works on phones, tablets and Chromebooks, in portrait and landscape
@@ -60,12 +60,12 @@ Draft text for the store pages. Lengths are checked against the store limits.
 
 ## Content rating
 
-- Everyone / 4+. No violence, no user content, no chat, no ads, no purchases, no gambling.
+- Everyone / 4+. No violence, no user content, no chat, contains ads, no purchases, no gambling.
 
 ## Data safety (Play) and App Privacy (App Store)
 
 - Data collected: **none**. Data shared: **none**.
-- The game stores progress only on the device. No account, no analytics, no ads.
+- The game stores progress only on the device. No account, no analytics. Ads are served by Google AdMob (advertising ID).
 - Privacy policy URL: host `docs/privacy-policy.html` (for example with GitHub Pages) and paste its URL.
 
 ## Graphics
