@@ -32,6 +32,8 @@ export interface SaveData {
   stats: Stats;
   cosmetics: { owned: string[]; livery: string; outfit: string; theme: string };
   streak: number; // levels won in a row without failing
+  struggle: { level: number; fails: number }; // consecutive failed attempts on one level (mercy)
+  rvWatched: number; // rewarded videos watched (milestone events)
 }
 
 const KEY = 'airplane-jam-save';
@@ -52,6 +54,8 @@ export const defaultSave = (): SaveData => ({
   stats: emptyStats(),
   cosmetics: { owned: COSMETICS.filter((c) => c.price === 0).map((c) => c.id), ...DEFAULT_COSMETICS },
   streak: 0,
+  struggle: { level: 0, fails: 0 },
+  rvWatched: 0,
 });
 
 const num = (v: unknown, fallback: number, min = 0) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.floor(v)) : fallback);
@@ -156,6 +160,8 @@ export function parseSave(raw: string | null | undefined): SaveData {
       theme: equip(cz.theme, THEMES, DEFAULT_COSMETICS.theme),
     },
     streak: num(o.streak, 0),
+    struggle: { level: num(obj(o.struggle).level, 0), fails: num(obj(o.struggle).fails, 0) },
+    rvWatched: num(o.rvWatched, 0),
   };
 }
 

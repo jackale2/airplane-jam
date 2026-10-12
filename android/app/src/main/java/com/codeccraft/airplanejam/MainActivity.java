@@ -8,6 +8,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AmplitudeHapticsPlugin.class); // amplitude + predefined haptics
         super.onCreate(savedInstanceState);
         // Phones stay in portrait. Tablets, foldables and Chromebooks may rotate: the game has a
         // landscape layout (and Android 16 ignores orientation locks on large screens anyway).

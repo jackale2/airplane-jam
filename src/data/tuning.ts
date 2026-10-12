@@ -20,7 +20,21 @@ export const TUNING = {
   /** Launch build: no ads and no purchases. The managers stay in the code for a later update. */
   adsEnabled: true,
   purchasesEnabled: false,
-  interstitial: { fromLevel: 6, everyLevels: 3, minGapMs: 90_000 },
+  /**
+   * Interstitial pacing. The studied game shortens the cooldown as the player goes deeper (300 s early,
+   * 30 s past level 200); same idea, gentler numbers: [from level, minimum seconds since the last ad].
+   */
+  interstitial: { fromLevel: 6, everyLevels: 3, gapByLevel: [[6, 150], [30, 120], [100, 90], [200, 45]] as readonly (readonly [number, number])[] },
+  /** Consecutive wins that pay a bonus (their win-streak ladder pays at 1, 2, 3, 5, 7, 10, 15). */
+  winStreak: [
+    { wins: 3, reward: { boosters: { extraGate: 1 } } },
+    { wins: 5, reward: { coins: 100 } },
+    { wins: 7, reward: { boosters: { sortQueue: 1 } } },
+    { wins: 10, reward: { coins: 100, boosters: { shuffleBoard: 1 } } },
+    { wins: 15, reward: { coins: 200, boosters: { extraGate: 1, sortQueue: 1, shuffleBoard: 1 } } },
+  ] as readonly { wins: number; reward: { coins?: number; boosters?: Partial<Record<'extraGate' | 'sortQueue' | 'shuffleBoard', number>> } }[],
+  /** Mercy: this many failed attempts in a row on one level earn a free Gate booster (their hidden difficulty score drops on fails). */
+  assist: { failsForGate: 2 },
   taxiPxPerSec: 1100,
   bumpMs: 220,
   boardMs: 140,

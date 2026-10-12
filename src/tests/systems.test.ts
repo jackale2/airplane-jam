@@ -62,9 +62,9 @@ describe('interstitial rules', () => {
     expect(shouldShowInterstitial({ ...base, level: 8, lastShownLevel: 6 })).toBe(false);
     expect(shouldShowInterstitial({ ...base, level: 9, lastShownLevel: 6 })).toBe(true);
   });
-  it('never within 90 seconds of the previous ad', () => {
-    expect(shouldShowInterstitial({ ...base, level: 20, lastShownAt: base.now - 89_000 })).toBe(false);
-    expect(shouldShowInterstitial({ ...base, level: 20, lastShownAt: base.now - 90_000 })).toBe(true);
+  it('never within the level-band cooldown of the previous ad (150 s from level 6)', () => {
+    expect(shouldShowInterstitial({ ...base, level: 20, lastShownAt: base.now - 149_000 })).toBe(false);
+    expect(shouldShowInterstitial({ ...base, level: 20, lastShownAt: base.now - 150_000 })).toBe(true);
   });
   it('Remove Ads disables them', () => {
     expect(shouldShowInterstitial({ ...base, adsRemoved: true })).toBe(false);

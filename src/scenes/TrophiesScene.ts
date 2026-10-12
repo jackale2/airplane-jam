@@ -11,6 +11,7 @@ import { sparkle } from '../ui/fx.ts';
 import { icon, type IconName } from '../ui/icons.ts';
 import { NavBar, NAV_H, TOP_H, topBar } from '../ui/menu.ts';
 import { panelImage, toast } from '../ui/Popup.ts';
+import { showBubble } from '../ui/bubble.ts';
 import { sceneryTex, type ThemeId } from '../ui/scenery.ts';
 import { ScrollView } from '../ui/ScrollView.ts';
 import { fmt, text, UI } from '../ui/theme.ts';
@@ -100,7 +101,13 @@ export class TrophiesScene extends BaseScene {
     const c = this.add.container(view.w / 2, y);
     sv.content.add(c);
     c.add(panelImage(this, 0, 0, cw, ch, 0xfff4d6));
-    c.add(icon(this, -cw / 2 + 100, 0, 'chest', 120));
+    const chest = icon(this, -cw / 2 + 100, 0, 'chest', 120).setInteractive({ useHandCursor: true });
+    chest.on('pointerup', () => {
+      const m = c.getWorldTransformMatrix();
+      showBubble(this, m.tx + (-cw / 2 + 100) * m.a, m.ty + 70 * m.d, `Bonus chest: ${describeReward(MISSION_BONUS)}`, { arrow: 'up' });
+      s.audio.haptic('chest');
+    });
+    c.add(chest);
     c.add(text(this, -cw / 2 + 190, -30, 'Bonus chest', 42, { color: UI.inkCss }).setOrigin(0, 0.5));
     c.add(text(this, -cw / 2 + 190, 22, `Claim all 3 missions: ${describeReward(MISSION_BONUS)}`, 28, { color: UI.softCss, weight: 600, wrap: cw - 470, align: 'left' }).setOrigin(0, 0.5));
     const ready = s.meta.bonusReady;

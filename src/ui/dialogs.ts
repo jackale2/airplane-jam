@@ -3,6 +3,7 @@ import { view } from '../config.ts';
 import { BOOSTER_IDS } from '../data/tuning.ts';
 import { DAILY_REWARDS, dailySlot, describeReward, type Reward } from '../meta/rewards.ts';
 import { services } from '../systems/services.ts';
+import { showBubble } from './bubble.ts';
 import type { CoinCounter } from './CoinCounter.ts';
 import { forever, sparkle } from './fx.ts';
 import { icon, type IconName } from './icons.ts';
@@ -119,7 +120,7 @@ export function openSettings(scene: Phaser.Scene, onReset?: () => void) {
         c.add(toggle(scene, w / 2 - 110, y, Boolean(st[key]), (v) => {
           (st as unknown as Record<string, unknown>)[key] = v;
           s.save.save();
-          if (key === 'vibration' && v) s.audio.haptic('medium');
+          if (key === 'vibration' && v) s.audio.haptic('button');
         }));
         y += rowH;
       }
@@ -263,6 +264,14 @@ export function openDaily(scene: Phaser.Scene, coins?: CoinCounter, onClaimed?: 
         c.add(ic);
         c.add(text(scene, x, y + cw / 2 + 10, ri.label, 30, { color: UI.inkCss }));
         if (claimed) c.add(icon(scene, x + bw / 2 - 24, y - cw / 2 + 24, 'check', 40, 0x2db353));
+        // tap a day to see what is inside
+        const hit = scene.add.zone(x, y + 20, bw, cw + 40).setInteractive({ useHandCursor: true });
+        hit.on('pointerup', () => {
+          const m = c.getWorldTransformMatrix();
+          showBubble(scene, m.tx + x * m.a, m.ty + (y + cw / 2 + 40) * m.d, `Day ${i + 1}: ${describeReward(r)}`, { arrow: 'up' });
+          s.audio.haptic('chest');
+        });
+        c.add(hit);
         if (isToday) forever(scene, { targets: ic, scale: ic.scale * 1.12, yoyo: true, duration: 500, ease: 'Sine.InOut' });
       });
     },

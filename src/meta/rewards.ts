@@ -1,4 +1,4 @@
-import type { BoosterId } from '../data/tuning.ts';
+import { TUNING, type BoosterId } from '../data/tuning.ts';
 
 /** A bundle the player can be given: coins and/or boosters. */
 export interface Reward {
@@ -42,4 +42,9 @@ export function describeReward(r: Reward) {
   const names: Record<BoosterId, string> = { extraGate: 'Gate', sortQueue: 'Sort', shuffleBoard: 'Shuffle' };
   for (const [id, n] of Object.entries(r.boosters ?? {})) if (n) parts.push(`${n} ${names[id as BoosterId]}`);
   return parts.join(' + ');
+}
+
+/** The bonus for reaching exactly this many wins in a row, if there is one. */
+export function streakReward(wins: number): Reward | null {
+  return TUNING.winStreak.find((s) => s.wins === wins)?.reward ?? null;
 }

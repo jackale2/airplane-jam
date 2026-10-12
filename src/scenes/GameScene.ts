@@ -18,6 +18,8 @@ import { services } from '../systems/services.ts';
 import { Button } from '../ui/Button.ts';
 import { confetti, floatText, forever, puff, ring, sparkle } from '../ui/fx.ts';
 import { icon } from '../ui/icons.ts';
+import { LEVEL_MILESTONES, milestone, track } from '../systems/analytics.ts';
+import { describeReward } from '../meta/rewards.ts';
 import { Popup, toast, type PopupButton } from '../ui/Popup.ts';
 import { layoutQueue } from '../ui/queueShapes.ts';
 import { palette, sceneryTex, type Pal, type ThemeId } from '../ui/scenery.ts';
@@ -165,6 +167,7 @@ export class GameScene extends BaseScene {
       this.alive = false;
       this.idleWaiters.forEach((f) => f());
     });
+    if (this.mode === 'level') track('StartNewGame', { level: this.levelNo });
     this.livery = s.save.data.cosmetics.livery;
     this.outfit = s.save.data.cosmetics.outfit;
     this.symbols = s.save.data.settings.symbols;
@@ -549,7 +552,7 @@ export class GameScene extends BaseScene {
     if (!v || !p) return;
     const a = services().audio;
     a.play('bump');
-    a.haptic('medium');
+    a.haptic('bump');
     const [dx, dy] = this.bv.vec(p.dir);
     const k = this.bv.cell * 0.16;
     const x0 = v.c.x;
@@ -577,7 +580,7 @@ export class GameScene extends BaseScene {
     const arrival = (async () => {
       const a = services().audio;
       a.play('taxi');
-      a.haptic('light');
+      a.haptic('tap');
       v.c.setDepth(50);
       ring(this, v.c.x, v.c.y, COLOR_HEX[p.color]!, this.bv.cell * 0.9, 49);
       // little squash as the engines spool up
@@ -741,7 +744,7 @@ export class GameScene extends BaseScene {
       s.audio.play('chime');
       await wait(this, 90);
       s.audio.play('takeoff');
-      s.audio.haptic('medium');
+      s.audio.haptic('full');
       puff(this, v.c.x, v.c.y + this.bv.cell * v.length * v.c.scaleX * 0.4, 8, 0xffffff, 54);
       sparkle(this, v.c.x, v.c.y, [COLOR_HEX[v.color]!, 0xffffff], 10, 300);
       this.gates.clearSeats(e.gate);
@@ -793,11 +796,14 @@ export class GameScene extends BaseScene {
     const stars = starsFor({ boostersUsed: this.boostersUsed, continues: this.continues });
     const reward = s.economy.claimWin(this.levelNo, stars);
     const { result, notices } = s.meta.completeLevel(this.levelNo, stars);
+    track('WinGame', { level: this.levelNo, stars, continues: this.continues });
+    const ms = milestone('ShowWinGameLevel', this.levelNo, LEVEL_MILESTONES);
+    if (ms) track(ms);
     s.save.flush();
     this.win = { stars, reward, result };
     this.coach.clear();
     s.audio.play('win');
-    s.audio.haptic('success');
+    s.audio.haptic('win');
     confetti(this, view.w * 0.2, view.h * 0.2, [...COLOR_HEX]);
     confetti(this, view.w * 0.8, view.h * 0.2, [...COLOR_HEX]);
     const banner = text(this, view.w / 2, view.h * 0.42, 'LEVEL COMPLETE!', 96, { color: '#FFFFFF', stroke: '#1B2A52', strokeW: 16, shadow: true }).setDepth(900).setScale(0);
@@ -817,6 +823,7 @@ export class GameScene extends BaseScene {
     if (w.reward.starBonus) rows.push(`Stars bonus  +${w.reward.starBonus}`);
     if (w.reward.hardBonus) rows.push(`HARD level  +${w.reward.hardBonus}`);
     if (w.reward.firstWin) rows.push(`First win today  +${w.reward.firstWin}`);
+    if (w.result.streakBonus) rows.push(`${s.save.data.streak} wins in a row  ${describeReward(w.result.streakBonus)}`);
     this.popup = new Popup(this, {
       title: hard ? 'Hard Level Cleared!' : `Level ${this.levelNo} Complete!`,
       ribbon: hard ? 'red' : 'green',
@@ -861,8 +868,9 @@ export class GameScene extends BaseScene {
       this.popupKind = null;
     });
     if (fresh) {
-      this.hud.coins.value = s.economy.coins - w.reward.total - (w.result.arrived !== null ? TUNING.destinationReward : 0);
-      this.time.delayedCall(900, () => this.hud.coins.flyFrom(view.w / 2, view.h / 2 + 80, w.reward.total));
+      const streakCoins = w.result.streakBonus?.coins ?? 0;
+      this.hud.coins.value = s.economy.coins - w.reward.total - streakCoins - (w.result.arrived !== null ? TUNING.destinationReward : 0);
+      this.time.delayedCall(900, () => this.hud.coins.flyFrom(view.w / 2, view.h / 2 + 80, w.reward.total + streakCoins));
     }
   }
 
@@ -902,11 +910,14 @@ export class GameScene extends BaseScene {
   private async onFailed() {
     const s = services();
     if (this.mode === 'zen') return this.zenAssist();
-    s.meta.failLevel();
+    const mercy = s.meta.failLevel(this.levelNo);
+    track('FailGame', { level: this.levelNo, continues: this.continues });
     s.audio.play('fail');
-    s.audio.haptic('warning');
+    s.audio.haptic('lose');
     await wait(this, 450);
-    if (this.alive) this.showFail();
+    if (!this.alive) return;
+    this.showFail();
+    if (mercy) toast(this, 'Tough one! Here is a free Gate booster.', view.h * 0.22, 0x2db353);
   }
 
   private showFail() {
@@ -989,6 +1000,7 @@ export class GameScene extends BaseScene {
   }
 
   private restartLevel() {
+    track('RetryGame', { level: this.levelNo });
     this.go('Game', { mode: 'level', level: this.levelNo });
   }
 

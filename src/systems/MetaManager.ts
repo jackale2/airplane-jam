@@ -6,7 +6,7 @@ import { dayKey } from '../meta/dates.ts';
 import { destinationIndex, destinationsReached } from '../meta/destinations.ts';
 import { applyMissionEvent, makeMissions, MISSION_BONUS, missionDone, missionText, type MetaEvent } from '../meta/missions.ts';
 import { BOOSTER_UNLOCK, isHardLevel, totalStars, ZEN_UNLOCK, type Stars } from '../meta/progress.ts';
-import { claimDaily, dailyAvailable, type Reward } from '../meta/rewards.ts';
+import { claimDaily, dailyAvailable, streakReward, type Reward } from '../meta/rewards.ts';
 import type { EconomyManager } from './EconomyManager.ts';
 import type { SaveManager } from './SaveManager.ts';
 
@@ -21,6 +21,8 @@ export interface LevelResult {
   firstClear: boolean;
   /** Set when this win unlocked the first level of a new destination. */
   arrived: number | null;
+  /** Bonus paid for this win streak (already granted), if any. */
+  streakBonus: Reward | null;
 }
 
 /** Stats, daily missions, achievements, the gift calendar and campaign progress. Tells the UI when badges change. */
@@ -139,14 +141,26 @@ export class MetaManager {
       }
     }
     this.d.streak++;
+    this.d.struggle = { level: 0, fails: 0 };
+    const streakBonus = streakReward(this.d.streak);
+    if (streakBonus) this.economy.grant(streakBonus);
     const notices = this.track({ type: 'win', stars, hard: isHardLevel(level) });
-    return { result: { stars, bestStars: this.d.stars[level]!, firstClear, arrived }, notices };
+    return { result: { stars, bestStars: this.d.stars[level]!, firstClear, arrived, streakBonus }, notices };
   }
 
-  /** A fail (deadlock popup) ends the win streak. */
-  failLevel() {
+  /**
+   * A fail (deadlock popup) ends the win streak. Failing the same level again and again earns a free Gate
+   * booster (mercy); returns true when it was just granted.
+   */
+  failLevel(level: number) {
     this.d.streak = 0;
+    const s = this.d.struggle;
+    s.fails = s.level === level ? s.fails + 1 : 1;
+    s.level = level;
+    const mercy = s.fails === TUNING.assist.failsForGate;
+    if (mercy) this.economy.add('extraGate');
     this.changed();
+    return mercy;
   }
 
   // ---------- claims ----------

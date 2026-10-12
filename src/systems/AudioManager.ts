@@ -1,5 +1,6 @@
-import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import type Phaser from 'phaser';
+import { fireHaptic, HAPTIC_MIN_GAP_MS, type Haptic } from './haptics.ts';
+import { loadSamples, SAMPLES } from './samples.ts';
 import { MusicEngine, midiHz, type Flavour } from './MusicEngine.ts';
 import type { SaveManager } from './SaveManager.ts';
 
@@ -25,8 +26,6 @@ export type Sfx =
   | 'sort'
   | 'tick';
 
-export type Haptic = 'light' | 'medium' | 'heavy' | 'success' | 'warning';
-
 const PENTA = [0, 2, 4, 7, 9];
 
 /**
@@ -40,7 +39,8 @@ export class AudioManager {
   private graph?: { sfx: GainNode; musicBus: GainNode; reverb: ConvolverNode; comp: DynamicsCompressorNode };
   music?: MusicEngine;
   private noise?: AudioBuffer;
-  private lastHaptic = 0;
+  private clips = new Map<string, AudioBuffer>();
+  private lastHaptic: Partial<Record<Haptic, number>> = {};
   private mood = { root: 60, flavour: 'major' as Flavour, calm: false };
 
   constructor(game: Phaser.Game, save: SaveManager) {
@@ -80,6 +80,7 @@ export class AudioManager {
     wet.gain.value = 0.5;
     reverb.connect(wet).connect(comp);
     this.graph = { sfx, musicBus, reverb, comp };
+    void loadSamples(c).then((m) => (this.clips = m));
     this.music = new MusicEngine(c, musicBus, reverb);
     this.music.setMood(this.mood.root, this.mood.flavour, this.mood.calm);
     this.applyVolumes();
@@ -134,32 +135,19 @@ export class AudioManager {
     this.music?.setMood(root, flavour, calm);
   }
 
-  haptic(kind: Haptic = 'light') {
+  haptic(kind: Haptic) {
     if (!this.settings.vibration) return;
     const now = performance.now();
-    if (kind === 'light' && now - this.lastHaptic < 45) return;
-    this.lastHaptic = now;
-    const fallback = () => navigator.vibrate?.(kind === 'light' ? 8 : kind === 'medium' ? 16 : kind === 'heavy' ? 28 : kind === 'success' ? [12, 60, 18] : [30, 50, 30]);
-    const p =
-      kind === 'success'
-        ? Haptics.notification({ type: NotificationType.Success })
-        : kind === 'warning'
-          ? Haptics.notification({ type: NotificationType.Warning })
-          : Haptics.impact({ style: kind === 'light' ? ImpactStyle.Light : kind === 'medium' ? ImpactStyle.Medium : ImpactStyle.Heavy });
-    p.catch(() => {
-      try {
-        fallback();
-      } catch {
-        /* no vibration support */
-      }
-    });
+    if (now - (this.lastHaptic[kind] ?? -Infinity) < (HAPTIC_MIN_GAP_MS[kind] ?? 0)) return;
+    this.lastHaptic[kind] = now;
+    fireHaptic(kind);
   }
 
   /** Boarding pop: a bubbly note climbing the pentatonic scale as the plane fills. */
   board(seat: number, pan = 0) {
     const n = this.mood.root + 12 + PENTA[seat % 5]! + 12 * Math.floor(seat / 5);
     this.play('tap', { note: n, pan, kind: 'bubble' });
-    this.haptic('light');
+    this.haptic('board');
   }
 
   play(name: Sfx, o: { rate?: number; pan?: number; note?: number; kind?: 'bubble' } = {}) {
@@ -168,10 +156,25 @@ export class AudioManager {
       const g = this.mixer();
       const c = this.ctx;
       if (!g || !c || c.state !== 'running') return;
-      this.synth(c, g, name, o);
+      if (!this.clip(c, g, name, o)) this.synth(c, g, name, o);
     } catch {
       /* audio is best-effort */
     }
+  }
+
+  /** Play the original clip for this sound if it is loaded. Boarding pops are pitched along the music's scale. */
+  private clip(c: AudioContext, g: NonNullable<AudioManager['graph']>, name: Sfx, o: { rate?: number; note?: number; kind?: 'bubble' }) {
+    const def = SAMPLES[name === 'tap' && o.kind === 'bubble' ? 'board' : name];
+    const buf = def && this.clips.get(def.file);
+    if (!def || !buf) return false;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = (o.rate ?? 1) * (o.note !== undefined ? 2 ** ((o.note - (this.mood.root + 12)) / 12) : 1);
+    const gain = c.createGain();
+    gain.gain.value = def.gain;
+    src.connect(gain).connect(g.sfx);
+    src.start();
+    return true;
   }
 
   private noiseBuf(c: AudioContext) {

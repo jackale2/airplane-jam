@@ -1,12 +1,20 @@
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { AdMob, AdmobConsentStatus, InterstitialAdPluginEvents, RewardAdPluginEvents } from '@capacitor-community/admob';
 import { TUNING } from '../data/tuning.ts';
+import { milestone, RV_MILESTONES, track } from './analytics.ts';
 import type { SaveManager } from './SaveManager.ts';
 
-/** Interstitial rules: from level 6, at most once every 3 levels, never within 90 s of the last ad. */
+/** Seconds that must pass since the last interstitial: the band for the highest threshold at or below `level`. */
+export function interstitialGapMs(level: number) {
+  let gap = TUNING.interstitial.gapByLevel[0]![1];
+  for (const [from, secs] of TUNING.interstitial.gapByLevel) if (level >= from) gap = secs;
+  return gap * 1000;
+}
+
+/** Interstitial rules: from level 6, at most once every 3 levels, and never inside the cooldown for the player's level. */
 export function shouldShowInterstitial(a: { level: number; lastShownLevel: number; lastShownAt: number; now: number; adsRemoved: boolean }) {
   const r = TUNING.interstitial;
-  return !a.adsRemoved && a.level >= r.fromLevel && a.level - a.lastShownLevel >= r.everyLevels && a.now - a.lastShownAt >= r.minGapMs;
+  return !a.adsRemoved && a.level >= r.fromLevel && a.level - a.lastShownLevel >= r.everyLevels && a.now - a.lastShownAt >= interstitialGapMs(a.level);
 }
 
 // Google's sample units serve test ads. Real units are used only when the build sets VITE_ADS_LIVE=1,
@@ -88,14 +96,21 @@ export class AdsManager {
     if (!this.enabled || this.busy) return false;
     this.busy = true;
     try {
-      if (!this.native) {
-        await new Promise((r) => setTimeout(r, 400)); // browser/dev stub
-        return true;
-      }
-      return await this.show('rewarded');
+      if (!this.native) await new Promise((r) => setTimeout(r, 400)); // browser/dev stub
+      const ok = this.native ? await this.show('rewarded') : true;
+      if (ok) this.countRewarded();
+      return ok;
     } finally {
       this.busy = false;
     }
+  }
+
+  private countRewarded() {
+    const n = ++this.save.data.rvWatched;
+    this.save.save();
+    track('AdShow_Rv', { n });
+    const m = milestone('WatchRewardedVideo', n, RV_MILESTONES);
+    if (m) track(m);
   }
 
   /** Called after a level is won. Returns true if an interstitial was shown. */
@@ -107,6 +122,7 @@ export class AdsManager {
     try {
       const shown = this.native ? await this.show('interstitial') : true; // browser: pretend, so the pacing rules stay testable
       if (shown) {
+        track('AdShow_Inter', { level });
         this.lastShownLevel = level;
         this.lastShownAt = Date.now();
       }
