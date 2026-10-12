@@ -169,7 +169,7 @@ export class AudioManager {
     if (!def || !buf) return false;
     const src = c.createBufferSource();
     src.buffer = buf;
-    src.playbackRate.value = (o.rate ?? 1) * (o.note !== undefined ? 2 ** ((o.note - (this.mood.root + 12)) / 12) : 1);
+    src.playbackRate.value = (o.rate ?? 1) * (o.note !== undefined ? 2 ** (Math.min(12, o.note - (this.mood.root + 12)) / 12) : 1);
     const gain = c.createGain();
     gain.gain.value = def.gain;
     src.connect(gain).connect(g.sfx);

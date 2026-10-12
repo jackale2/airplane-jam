@@ -85,6 +85,7 @@ export class CoinCounter extends Phaser.GameObjects.Container {
           this.value = start + ((target - start) * (i + 1)) / n;
           this.pulse();
           services().audio.play('coin', { rate: 1 + i * 0.04 });
+          services().audio.haptic('coin');
         },
       });
     }

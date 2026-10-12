@@ -5,7 +5,7 @@
 | Fredoka (variable) | The Fredoka Project Authors | SIL OFL 1.1 (`docs/licenses/fredoka-OFL.txt`) | All game text |
 | Tappy Plane | Kenney Vleugels, www.kenney.nl | CC0 | Pointing hand in the tutorial (`public/assets/ui/icons/tap.png`) |
 | Colorblind symbols | Owner-supplied art pack | Owner's own | The 8 shape symbols on planes and travelers |
-| 13 sound clips in `public/assets/sfx/` (`ui_click`, `window_open`, `ui_getcoin`, `level_win`, `game_lose`, `star_increase`, `passenger_geton`, `lock_open_ui`, `shuffle`, `vehicle_full`, `ui_claim_reward`, `vehicle_move`, `click_cell`) | Extracted from the Bus Fever - Car Parking Jam 1.19.7 asset bundles (`sound_*` audio clips) | **Unlicensed: copyrighted by the original studio** | Layered over the synth (`src/systems/samples.ts`). **Replace with your own or licensed sounds before a store release**; delete the folder to restore the pure synth. |
+| 10 sound clips in `public/assets/sfx/` (`ui_click`, `window_open`, `ui_getcoin`, `level_win`, `game_lose`, `star_increase`, `passenger_geton`, `shuffle`, `vehicle_full`, `ui_claim_reward`) | Extracted from the Bus Fever - Car Parking Jam 1.19.7 asset bundles (`sound_*` audio clips) | **Unlicensed: copyrighted by the original studio** | Layered over the synth (`src/systems/samples.ts`). **Replace with your own or licensed sounds before a store release**; delete the folder to restore the pure synth. |
 
 Everything else is original to this project:
 

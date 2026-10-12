@@ -123,12 +123,12 @@ Event list (98 names): start/exit/retry/win/fail game, revive, use/get tools, ge
 
 | Area | Change | Where |
 |---|---|---|
-| Haptics | Their 9-row amplitude table, mapped to your events; native Android plugin (one-shot with amplitude, predefined effect, waveform) with the old Capacitor path as fallback | `src/systems/haptics.ts`, `android/…/AmplitudeHapticsPlugin.java`, `AudioManager.haptic` |
+| Haptics | Their 9-row amplitude table (boarding and coin rows softened from HEAVY_CLICK to a 10 ms, amplitude-30 pulse because they chain quickly; restore with `effect: 5, ios: 4` in `HAPTIC_ROWS` rows 2 and 5), mapped to your events; native Android plugin (one-shot with amplitude, predefined effect, waveform) with the old Capacitor path as fallback | `src/systems/haptics.ts`, `android/…/AmplitudeHapticsPlugin.java`, `AudioManager.haptic` |
 | Bubble | Reward bubble (smoothstep pop-in, 267 ms, up/down arrow) | `src/ui/bubble.ts` |
 | Sound | Their original sound clips layered over your synth for UI click, popups, coins, win/lose, star, boarding pop (pitched to your scale), unlock, shuffle | `public/assets/sfx/`, `AudioManager` |
 | Ads | Interstitial cooldown bands by level | `TUNING.interstitial`, `AdsManager` |
-| Retention | Win-streak ladder (3, 5, 7, 10, 15 wins) with coin and booster prizes | `TUNING.winStreak`, `MetaManager` |
-| Difficulty | Mercy after repeated fails on one level: a free Gate booster | `TUNING.assist`, `MetaManager` |
+| Retention | Win-streak ladder (3, 5, 7, 10, 15 wins in a row on the frontier level) with coin and booster prizes | `TUNING.winStreak`, `MetaManager` |
+| Difficulty | Mercy after repeated fails on the current level (from level 4, when Gate unlocks): a free Gate booster | `TUNING.assist`, `MetaManager` |
 | Measurement | Event layer with their event names and milestone events (levels reached, rewarded videos watched); stays on the device until you add an SDK | `src/systems/analytics.ts` |
 
 ### Deliberately not ported

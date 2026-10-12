@@ -634,6 +634,7 @@ export class GameScene extends BaseScene {
       this.gates.flash(gate);
       this.gates.setSeats(gate, Game.capacity(p), 0, p.color);
       a.play('park');
+      a.haptic('park');
       this.tweens.add({ targets: v.c, scaleY: d.scale * 0.94, scaleX: d.scale * 1.05, duration: 80, yoyo: true });
     })().finally(() => this.end());
     this.arrivals.set(id, arrival);

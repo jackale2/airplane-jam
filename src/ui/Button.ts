@@ -91,7 +91,10 @@ export class Button extends Phaser.GameObjects.Container {
       this.release();
       if (!d || !this.enabled) return;
       if (Math.hypot(p.x - d.x, p.y - d.y) > 14 * scene.scale.displayScale.x) return; // it was a drag, not a tap
-      if (opts.sound !== false) services().audio.play('click');
+      if (opts.sound !== false) {
+        services().audio.play('click');
+        services().audio.haptic('button');
+      }
       opts.onClick();
     });
     this.on('pointerout', () => {

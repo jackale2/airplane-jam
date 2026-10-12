@@ -65,20 +65,30 @@ describe('win streak ladder', () => {
 });
 
 describe('mercy after repeated fails', () => {
-  it('the second fail in a row on one level grants one free Gate, once', () => {
+  it('the second fail in a row on the current level grants one free Gate, once', () => {
     const { meta: m, save } = meta();
+    save.data.level = 7;
     expect(m.failLevel(7)).toBe(false);
     expect(m.failLevel(7)).toBe(true);
     expect(m.failLevel(7)).toBe(false);
     expect(save.data.boosters.extraGate).toBe(1);
   });
-  it('failing different levels, or winning in between, restarts the count', () => {
+  it('winning in between restarts the count', () => {
     const { meta: m, save } = meta();
-    m.failLevel(7);
-    expect(m.failLevel(8)).toBe(false);
+    save.data.level = 9;
     m.failLevel(9);
     m.completeLevel(9, 1);
+    save.data.level = 9;
     expect(m.failLevel(9)).toBe(false);
+    expect(save.data.boosters.extraGate).toBe(0);
+  });
+  it('replaying old levels, or levels before Gate unlocks, earns nothing', () => {
+    const { meta: m, save } = meta();
+    save.data.level = 20;
+    for (const lv of [5, 5, 6, 6, 7, 7]) m.failLevel(lv);
+    save.data.level = 2;
+    m.failLevel(2);
+    m.failLevel(2);
     expect(save.data.boosters.extraGate).toBe(0);
   });
   it('survives a save round trip and a damaged save', () => {
@@ -89,6 +99,16 @@ describe('mercy after repeated fails', () => {
     expect(back.struggle).toEqual({ level: 4, fails: 1 });
     expect(back.rvWatched).toBe(9);
     expect(parseSave(JSON.stringify({ struggle: 'x', rvWatched: -3 })).struggle).toEqual({ level: 0, fails: 0 });
+  });
+});
+
+describe('streak replay guard', () => {
+  it('winning old levels never pays or extends the win streak', () => {
+    const { meta: m, save } = meta();
+    save.data.level = 30;
+    for (let i = 0; i < 15; i++) expect(m.completeLevel(1, 3).result.streakBonus).toBeNull();
+    expect(save.data.streak).toBe(0);
+    expect(save.data.boosters.extraGate).toBe(0);
   });
 });
 

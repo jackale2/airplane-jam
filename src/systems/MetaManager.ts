@@ -131,6 +131,7 @@ export class MetaManager {
     const firstClear = prev === 0;
     this.d.stars[level] = Math.max(prev, stars);
     let arrived: number | null = null;
+    const prevLevel = this.d.level;
     if (this.d.level === level) {
       this.d.level = level + 1;
       const di = destinationIndex(level + 1);
@@ -140,9 +141,11 @@ export class MetaManager {
         this.economy.addCoins(TUNING.destinationReward);
       }
     }
-    this.d.streak++;
+    // streak and mercy only count on the frontier level: replaying old levels must not farm rewards
+    const frontier = prevLevel === level;
+    if (frontier) this.d.streak++;
     this.d.struggle = { level: 0, fails: 0 };
-    const streakBonus = streakReward(this.d.streak);
+    const streakBonus = frontier ? streakReward(this.d.streak) : null;
     if (streakBonus) this.economy.grant(streakBonus);
     const notices = this.track({ type: 'win', stars, hard: isHardLevel(level) });
     return { result: { stars, bestStars: this.d.stars[level]!, firstClear, arrived, streakBonus }, notices };
@@ -154,6 +157,10 @@ export class MetaManager {
    */
   failLevel(level: number) {
     this.d.streak = 0;
+    if (level !== this.d.level || level < BOOSTER_UNLOCK.extraGate) {
+      this.changed();
+      return false; // replays earn no mercy, and a Gate booster is unusable before it unlocks
+    }
     const s = this.d.struggle;
     s.fails = s.level === level ? s.fails + 1 : 1;
     s.level = level;

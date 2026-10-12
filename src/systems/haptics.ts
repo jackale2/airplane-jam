@@ -45,7 +45,7 @@ export const FULL_PATTERN = { timings: [0, 30, 45, 30, 45, 30], amplitudes: [0, 
 export type Haptic = keyof typeof HAPTIC_EVENTS | 'full';
 
 /** Same event never fires twice inside this window (boarding can chain quickly). */
-export const HAPTIC_MIN_GAP_MS: Partial<Record<Haptic, number>> = { board: 45 };
+export const HAPTIC_MIN_GAP_MS: Partial<Record<Haptic, number>> = { board: 45, coin: 45 };
 
 export const hapticRow = (kind: Exclude<Haptic, 'full'>): HapticRow => HAPTIC_ROWS[HAPTIC_EVENTS[kind]]!;
 
