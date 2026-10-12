@@ -45,6 +45,8 @@ interface WinInfo {
   stars: Stars;
   reward: WinReward;
   result: LevelResult;
+  /** The win coins were doubled by watching an ad (once per win). */
+  doubled?: boolean;
 }
 interface ZenState {
   seed: number;
@@ -861,6 +863,9 @@ export class GameScene extends BaseScene {
       },
       buttons: [
         { text: 'Home', icon: 'home', color: 'blue', onClick: () => this.go('Home') },
+        ...(s.ads.enabled && !w.doubled && w.reward.total > 0
+          ? [{ text: `x2 +${w.reward.total} (ad)`, icon: 'play' as const, color: 'yellow' as const, keepOpen: true, onClick: () => void this.doubleWin(w) }]
+          : []),
         { text: 'Next', icon: 'play', color: 'green', onClick: () => void this.nextLevel() },
       ],
     });
@@ -873,6 +878,22 @@ export class GameScene extends BaseScene {
       this.hud.coins.value = s.economy.coins - w.reward.total - streakCoins - (w.result.arrived !== null ? TUNING.destinationReward : 0);
       this.time.delayedCall(900, () => this.hud.coins.flyFrom(view.w / 2, view.h / 2 + 80, w.reward.total + streakCoins));
     }
+  }
+
+  /** Watch an ad to get this win's coins a second time. Granted once per win, even across a popup reopen. */
+  private async doubleWin(w: WinInfo) {
+    const s = services();
+    if (w.doubled) {
+      toast(this, 'Already doubled!', view.h * 0.22, 0xe0a000);
+      return;
+    }
+    if (!(await s.ads.showRewarded()) || !this.alive || w.doubled) return;
+    w.doubled = true;
+    s.economy.addCoins(w.reward.total);
+    track('DoubleWinCoins', { level: this.levelNo, coins: w.reward.total });
+    this.hud.coins.value = s.economy.coins - w.reward.total;
+    this.hud.coins.flyFrom(view.w / 2, view.h / 2 + 80, w.reward.total);
+    toast(this, `Doubled! +${w.reward.total} coins`, view.h * 0.22, 0xe0a000);
   }
 
   private async nextLevel() {

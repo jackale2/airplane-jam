@@ -129,6 +129,7 @@ Event list (98 names): start/exit/retry/win/fail game, revive, use/get tools, ge
 | Ads | Interstitial cooldown bands by level | `TUNING.interstitial`, `AdsManager` |
 | Retention | Win-streak ladder (3, 5, 7, 10, 15 wins in a row on the frontier level) with coin and booster prizes | `TUNING.winStreak`, `MetaManager` |
 | Difficulty | Mercy after repeated fails on the current level (from level 4, when Gate unlocks): a free Gate booster | `TUNING.assist`, `MetaManager` |
+| Ads | "x2 coins (ad)" button on the win popup, once per win (inspired by their rewarded gold rewards `RvGoldReward` 30/50/80/60/40; the exact x2 offer is my design, not something I saw in their code) | `GameScene.doubleWin` |
 | Measurement | Event layer with their event names and milestone events (levels reached, rewarded videos watched); stays on the device until you add an SDK | `src/systems/analytics.ts` |
 
 ### Deliberately not ported
